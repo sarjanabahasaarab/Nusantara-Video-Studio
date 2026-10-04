@@ -1,0 +1,6 @@
+{
+  "name": "Nusantara Video Studio",
+  "description": "Professional desktop video editor built with React, TypeScript, and Tauri.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

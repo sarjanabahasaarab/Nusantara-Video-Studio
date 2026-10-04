@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="primary" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rectangle -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)" stroke="#1e293b" stroke-width="12" />
+  
+  <!-- Film Sprocket holes left and right -->
+  <rect x="44" y="60" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="44" y="140" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="44" y="220" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="44" y="300" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="44" y="380" width="30" height="40" rx="8" fill="#334155" />
+
+  <rect x="438" y="60" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="438" y="140" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="438" y="220" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="438" y="300" width="30" height="40" rx="8" fill="#334155" />
+  <rect x="438" y="380" width="30" height="40" rx="8" fill="#334155" />
+
+  <!-- Geometric "N" and Play Triangle emblem -->
+  <path d="M 140 380 L 140 132 L 200 132 L 312 300 L 312 132 L 372 132 L 372 380 L 312 380 L 200 212 L 200 380 Z" fill="url(#primary)" />
+  
+  <!-- Central vibrant play symbol inside triangle accent -->
+  <polygon points="230,220 230,292 290,256" fill="#38bdf8" opacity="0.9" />
+</svg>
