@@ -90,10 +90,13 @@ export const Sidebar: React.FC = () => {
         name: 'Title Text Layer',
         type: 'text',
         color: '#d97706',
-        text: 'Nusantara Video Studio',
-        fontFamily: 'Inter',
-        fontSize: 48,
-        alignment: 'center',
+        textProps: {
+          text: 'Nusantara Video Studio',
+          fontFamily: 'Inter',
+          fontSize: 48,
+          alignment: 'center',
+          color: '#ffffff',
+        },
       };
     }
 

@@ -1,23 +1,46 @@
 /**
  * Nusantara Video Studio - Master Timeline Component
- * Composes TimelineToolbar, TrackHeaders, Ruler, Playhead, and TrackLanes
+ * Phase 3: Professional Timeline & Capture Engine
+ *
+ * Composes TimelineToolbar, TrackHeaders, Ruler, Playhead, TrackLanes,
+ * and Timeline Clip Context Menu (Cut, Copy, Duplicate, Split, Delete, Reset).
  */
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
+import { useSelectionStore } from '../../stores/selectionStore';
 import { useUIStore } from '../../stores/uiStore';
 import { TimelineToolbar } from './TimelineToolbar';
 import { TrackHeader } from './TrackHeader';
 import { TimelineRuler } from './TimelineRuler';
 import { TrackLane } from './TrackLane';
 import { Playhead } from './Playhead';
-import { Film } from 'lucide-react';
+import {
+  Film,
+  Scissors,
+  Copy,
+  Trash2,
+  CopyPlus,
+  RotateCcw,
+  Sliders,
+  FolderOpen,
+} from 'lucide-react';
+import { Clip } from '../../types';
 
 export const Timeline: React.FC = () => {
   const tracks = useProjectStore((s) => s.currentProject.timeline.tracks);
   const duration = useProjectStore((s) => s.currentProject.timeline.duration);
   const zoom = useTimelineStore((s) => s.zoom);
+
+  const splitClipAtCurrentTime = useTimelineStore((s) => s.splitClipAtCurrentTime);
+  const duplicateClip = useTimelineStore((s) => s.duplicateClip);
+  const removeClip = useTimelineStore((s) => s.removeClip);
+  const resetClipProperties = useTimelineStore((s) => s.resetClipProperties);
+
+  const selectClip = useSelectionStore((s) => s.selectClip);
+  const copyClip = useSelectionStore((s) => s.copyClip);
+  const notify = useUIStore((s) => s.notify);
 
   const timelineHeight = useUIStore((s) => s.timelineHeight);
   const setTimelineHeight = useUIStore((s) => s.setTimelineHeight);
@@ -25,6 +48,25 @@ export const Timeline: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1000);
+
+  // Context Menu State for Timeline Clip (Requirement 33)
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    clip: Clip | null;
+  }>({ visible: false, x: 0, y: 0, clip: null });
+
+  // Close context menu on outside click
+  useEffect(() => {
+    const handleClose = () => {
+      if (contextMenu.visible) {
+        setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+      }
+    };
+    window.addEventListener('click', handleClose);
+    return () => window.removeEventListener('click', handleClose);
+  }, [contextMenu.visible]);
 
   // Resize observer for container width
   useEffect(() => {
@@ -45,7 +87,7 @@ export const Timeline: React.FC = () => {
     const startHeight = timelineHeight;
 
     const onPointerMove = (moveEvent: PointerEvent) => {
-      const deltaY = startY - moveEvent.clientY; // dragging upwards increases height
+      const deltaY = startY - moveEvent.clientY;
       setTimelineHeight(startHeight + deltaY);
     };
 
@@ -58,9 +100,21 @@ export const Timeline: React.FC = () => {
     window.addEventListener('pointerup', onPointerUp);
   };
 
-  const laneAreaWidth = Math.max(containerWidth - 220, duration * zoom + 200);
+  const handleClipContextMenu = (e: React.MouseEvent, clip: Clip) => {
+    e.preventDefault();
+    e.stopPropagation();
+    selectClip(clip.id);
+    setContextMenu({
+      visible: true,
+      x: Math.min(e.clientX, window.innerWidth - 200),
+      y: Math.min(e.clientY, window.innerHeight - 240),
+      clip,
+    });
+  };
+
+  const laneAreaWidth = Math.max(containerWidth - 220, duration * zoom + 300);
   const trackCount = tracks.length;
-  const tracksTotalHeight = 24 + trackCount * 64; // ruler (24px) + tracks (64px each)
+  const tracksTotalHeight = 28 + trackCount * 64; // ruler (28px) + tracks (64px each)
 
   return (
     <div
@@ -89,45 +143,121 @@ export const Timeline: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* Left Column: Fixed Track Headers */}
-            <div className="w-52 flex flex-col shrink-0 border-r border-[#202534] bg-[#11131a] z-20 overflow-y-hidden">
-              {/* Header Corner Spacer (aligns with Ruler) */}
-              <div className="h-6 bg-[#0c0e14] border-b border-[#202534] px-2.5 flex items-center justify-between text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
-                <span>Tracks</span>
-                <span className="font-mono text-slate-500">{tracks.length}</span>
+            {/* Left Column: Fixed Track Headers with header spacer */}
+            <div className="w-52 border-r border-[#212634] flex flex-col shrink-0 z-20 bg-[#12141c] overflow-y-auto no-scrollbar">
+              {/* Ruler header spacer */}
+              <div className="h-7 border-b border-[#212634] bg-[#0d0f15] px-3 flex items-center text-[10px] font-bold text-slate-500 uppercase tracking-wider shrink-0">
+                Tracks
               </div>
 
-              {/* Vertical Stack of Track Headers */}
-              <div className="flex-1 overflow-y-auto">
+              {/* Track headers */}
+              <div className="flex flex-col">
                 {tracks.map((track) => (
                   <TrackHeader key={track.id} track={track} />
                 ))}
               </div>
             </div>
 
-            {/* Right Column: Scrollable Ruler + Track Lanes + Playhead */}
+            {/* Right Column: Horizontally and vertically scrollable lanes + ruler + playhead */}
             <div
               ref={scrollContainerRef}
-              className="flex-1 overflow-x-auto overflow-y-auto relative bg-[#0b0c10]"
+              className="flex-1 overflow-x-auto overflow-y-auto relative bg-[#0b0d13]"
             >
-              <div style={{ width: `${laneAreaWidth}px` }} className="relative min-h-full">
-                {/* Ruler */}
-                <TimelineRuler totalWidth={laneAreaWidth} />
+              {/* Ruler Bar */}
+              <TimelineRuler totalWidth={laneAreaWidth} />
 
-                {/* Track Lanes */}
-                <div className="flex flex-col">
-                  {tracks.map((track) => (
-                    <TrackLane key={track.id} track={track} totalWidth={laneAreaWidth} />
-                  ))}
-                </div>
+              {/* Lanes Area */}
+              <div style={{ width: `${laneAreaWidth}px` }} className="flex flex-col relative">
+                {tracks.map((track) => (
+                  <TrackLane
+                    key={track.id}
+                    track={track}
+                    totalWidth={laneAreaWidth}
+                    onClipContextMenu={handleClipContextMenu}
+                  />
+                ))}
 
-                {/* Vertical Playhead Scrubber */}
-                <Playhead totalHeight={Math.max(tracksTotalHeight, 400)} />
+                {/* Vertical Scrubber Playhead spanning entire tracks */}
+                <Playhead totalHeight={tracksTotalHeight} />
               </div>
             </div>
           </>
         )}
       </div>
+
+      {/* Timeline Clip Context Menu (Requirement 33) */}
+      {contextMenu.visible && contextMenu.clip && (
+        <div
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+          className="fixed bg-[#161a24] border border-[#273042] rounded-xl shadow-2xl py-1 z-50 min-w-[190px] text-xs animate-in fade-in zoom-in-95 duration-75 select-none"
+        >
+          <div className="px-3 py-1.5 text-[10px] font-semibold text-slate-400 border-b border-[#222938] truncate max-w-[180px]">
+            {contextMenu.clip.name}
+          </div>
+
+          <button
+            onClick={() => {
+              splitClipAtCurrentTime(contextMenu.clip!.id);
+              setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+              notify('Split Clip', 'Clip berhasil dipotong pada playhead.', 'success');
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-blue-600/20 hover:text-blue-400 transition-colors"
+          >
+            <Scissors className="w-3.5 h-3.5 text-blue-400" />
+            <span>Split at Playhead (Ctrl+K)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              duplicateClip(contextMenu.clip!.id);
+              setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+              notify('Duplicate', 'Clip berhasil diduplikasi.', 'success');
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-blue-600/20 hover:text-blue-400 transition-colors"
+          >
+            <CopyPlus className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Duplicate Clip (Ctrl+D)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              copyClip(contextMenu.clip!);
+              setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+              notify('Copy', 'Clip disalin ke clipboard (Ctrl+C).', 'info');
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-blue-600/20 hover:text-blue-400 transition-colors"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            <span>Copy Clip (Ctrl+C)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              resetClipProperties(contextMenu.clip!.id);
+              setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+              notify('Reset', 'Transform dan efek clip direset ke default.', 'info');
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-slate-200 hover:bg-blue-600/20 hover:text-blue-400 transition-colors"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            <span>Reset Properties</span>
+          </button>
+
+          <div className="my-1 border-t border-[#222938]" />
+
+          <button
+            onClick={() => {
+              removeClip(contextMenu.clip!.id);
+              setContextMenu({ visible: false, x: 0, y: 0, clip: null });
+              notify('Hapus', 'Clip dihapus dari timeline.', 'info');
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-rose-400 hover:bg-rose-950/40 transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete (Del)</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

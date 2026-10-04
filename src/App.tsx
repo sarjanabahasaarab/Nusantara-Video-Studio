@@ -25,6 +25,11 @@ import { RelinkMediaDialog } from './components/dialogs/RelinkMediaDialog';
 import { ImportProgressModal } from './components/dialogs/ImportProgressModal';
 import { MediaTestModal } from './components/dialogs/MediaTestModal';
 
+import { ScreenCaptureModal } from './components/capture/ScreenCaptureModal';
+import { CameraCaptureModal } from './components/capture/CameraCaptureModal';
+import { VoiceRecordingModal } from './components/capture/VoiceRecordingModal';
+import { TextGeneratorModal } from './components/text/TextGeneratorModal';
+
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoSave } from './hooks/useAutoSave';
 import { databaseService } from './services/databaseService';
@@ -46,8 +51,8 @@ export default function App() {
   useEffect(() => {
     databaseService.initialize().then(() => {
       notify(
-        'Nusantara Video Studio v0.2.0',
-        'Phase 2 Media Library & Import aktif. Tekan Import Media atau Drag & Drop berkas untuk memulai.',
+        'Nusantara Video Studio v0.3.0',
+        'Phase 3: Professional Timeline & Capture Engine aktif. Siap merekam layar, kamera, suara, dan editing multi-track.',
         'info',
         4000
       );
@@ -85,6 +90,15 @@ export default function App() {
       <ImportProgressModal />
       <MediaTestModal
         isOpen={activeDialog === 'mediaTest'}
+        onClose={closeDialog}
+      />
+
+      {/* Phase 3 Capture Engine & Text Generator Modals */}
+      <ScreenCaptureModal />
+      <CameraCaptureModal />
+      <VoiceRecordingModal />
+      <TextGeneratorModal
+        isOpen={activeDialog === 'textGenerator'}
         onClose={closeDialog}
       />
 

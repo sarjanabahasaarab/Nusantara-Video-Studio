@@ -1,6 +1,9 @@
 /**
  * Nusantara Video Studio - Main Toolbar
- * Fast-access tools with tooltips and responsive styling
+ * Phase 3: Professional Timeline & Capture Engine
+ *
+ * Controls: New, Open, Save, Undo, Redo, Import, Split, Text, Voice,
+ * Screen Capture, Camera, Play, Stop, Zoom.
  */
 
 import React from 'react';
@@ -10,22 +13,25 @@ import {
   Save,
   Undo2,
   Redo2,
-  MousePointer,
-  Scissors,
-  SplitSquareVertical,
-  Trash2,
-  Type,
-  Music,
-  Layers,
-  Sparkles,
-  Download,
   Upload,
+  Scissors,
+  Type,
+  Mic,
+  Monitor,
+  Camera,
+  Play,
+  Pause,
+  Square,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
-import { useSelectionStore, EditorTool } from '../../stores/selectionStore';
-import { useUIStore, SidebarTab } from '../../stores/uiStore';
+import { useSelectionStore } from '../../stores/selectionStore';
+import { useUIStore } from '../../stores/uiStore';
 import { useMediaStore } from '../../stores/mediaStore';
+import { useCaptureStore } from '../../stores/captureStore';
 import { fileService } from '../../services/fileService';
 import { mediaService } from '../../services/mediaService';
 
@@ -53,18 +59,18 @@ const ToolbarButton: React.FC<ToolbarButtonProps> = ({
       onClick={onClick}
       disabled={disabled}
       title={tooltip}
-      className={`group relative flex items-center gap-1.5 px-2.5 py-1 rounded text-xs transition-all duration-150 ${
+      className={`group relative flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-all duration-150 ${
         disabled
           ? 'opacity-30 cursor-not-allowed text-slate-500'
           : active
-          ? 'bg-blue-600/25 text-blue-400 border border-blue-500/40 shadow-sm'
+          ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40 shadow-sm'
           : highlight
           ? 'bg-blue-600 hover:bg-blue-500 text-white font-medium shadow-sm'
           : 'text-slate-300 hover:text-white hover:bg-[#202531]'
       }`}
     >
       <span className="shrink-0">{icon}</span>
-      <span className="text-[11px] font-medium hidden sm:inline">{label}</span>
+      <span className="text-[11px] font-medium hidden md:inline">{label}</span>
     </button>
   );
 };
@@ -77,27 +83,20 @@ export const Toolbar: React.FC = () => {
   const canRedo = useProjectStore((s) => s.canRedo());
   const markSaved = useProjectStore((s) => s.markSaved);
 
-  const selectedClipId = useSelectionStore((s) => s.selectedClipId);
-  const activeTool = useSelectionStore((s) => s.activeTool);
-  const setActiveTool = useSelectionStore((s) => s.setActiveTool);
-  const clearSelection = useSelectionStore((s) => s.clearSelection);
-
-  const removeClip = useTimelineStore((s) => s.removeClip);
-  const splitClipAtCurrentTime = useTimelineStore((s) => s.splitClipAtCurrentTime);
+  const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);
+  const splitSelectedClipsAtPlayhead = useTimelineStore((s) => s.splitSelectedClipsAtPlayhead);
+  const isPlaying = useTimelineStore((s) => s.isPlaying);
+  const togglePlay = useTimelineStore((s) => s.togglePlay);
+  const stop = useTimelineStore((s) => s.stop);
+  const zoomIn = useTimelineStore((s) => s.zoomIn);
+  const zoomOut = useTimelineStore((s) => s.zoomOut);
+  const zoomToFit = useTimelineStore((s) => s.zoomToFit);
 
   const openDialog = useUIStore((s) => s.openDialog);
   const setActiveSidebarTab = useUIStore((s) => s.setActiveSidebarTab);
   const notify = useUIStore((s) => s.notify);
 
-  const handleToolSelect = (tool: EditorTool) => {
-    setActiveTool(tool);
-    notify('Tool Dipilih', `Mode: ${tool.toUpperCase()}`, 'info', 1000);
-  };
-
-  const handleSidebarTabSwitch = (tab: SidebarTab, label: string) => {
-    setActiveSidebarTab(tab);
-    notify(label, `Membuka tab ${label} di sidebar.`, 'info', 1200);
-  };
+  const openCaptureModal = useCaptureStore((s) => s.openModal);
 
   const handleImportMedia = async () => {
     setActiveSidebarTab('media');
@@ -138,9 +137,18 @@ export const Toolbar: React.FC = () => {
     }
   };
 
+  const handleSplit = () => {
+    if (selectedClipIds.length > 0) {
+      splitSelectedClipsAtPlayhead();
+      notify('Split Clip', 'Clip terpilih berhasil dipotong pada playhead.', 'success');
+    } else {
+      notify('Split Clip', 'Pilih clip pada timeline untuk dipotong.', 'warning');
+    }
+  };
+
   return (
-    <div className="h-10 bg-[#141720] border-b border-[#212632] px-3 flex items-center justify-between gap-2 overflow-x-auto select-none">
-      {/* Group 1: Project Operations */}
+    <div className="h-10 bg-[#141720] border-b border-[#212632] px-3 flex items-center justify-between gap-1 overflow-x-auto select-none">
+      {/* Group 1: Project Operations (New, Open, Save) */}
       <div className="flex items-center gap-1 shrink-0">
         <ToolbarButton
           icon={<FilePlus className="w-3.5 h-3.5" />}
@@ -165,24 +173,17 @@ export const Toolbar: React.FC = () => {
         <ToolbarButton
           icon={<Save className="w-3.5 h-3.5" />}
           label="Save"
-          tooltip="Save Project to .nvproj (Ctrl+S)"
+          tooltip="Save Project (Ctrl+S)"
           onClick={() => {
             fileService.saveProjectToFile(currentProject);
             markSaved();
             notify('Simpan Proyek', `File "${currentProject.name}.nvproj" berhasil disimpan.`, 'success');
           }}
         />
-        <ToolbarButton
-          icon={<Upload className="w-3.5 h-3.5 text-blue-400" />}
-          label="Import"
-          tooltip="Import Media (Ctrl+I)"
-          highlight={true}
-          onClick={handleImportMedia}
-        />
 
-        <div className="h-4 w-px bg-[#262c3a] mx-1" />
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
 
-        {/* Group 2: History */}
+        {/* Group 2: History (Undo, Redo) */}
         <ToolbarButton
           icon={<Undo2 className="w-3.5 h-3.5" />}
           label="Undo"
@@ -201,97 +202,95 @@ export const Toolbar: React.FC = () => {
             if (redo()) notify('Redo', 'Perubahan diterapkan kembali.', 'info', 1500);
           }}
         />
-      </div>
 
-      {/* Group 3: Timeline & Editing Tools */}
-      <div className="flex items-center gap-1 shrink-0">
-        <div className="h-4 w-px bg-[#262c3a] mx-1" />
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
 
+        {/* Group 3: Ingestion & Editing (Import, Split) */}
         <ToolbarButton
-          icon={<MousePointer className="w-3.5 h-3.5" />}
-          label="Select"
-          tooltip="Select Tool (V)"
-          active={activeTool === 'select'}
-          onClick={() => handleToolSelect('select')}
+          icon={<Upload className="w-3.5 h-3.5 text-blue-400" />}
+          label="Import"
+          tooltip="Import Media (Ctrl+I)"
+          highlight={true}
+          onClick={handleImportMedia}
         />
         <ToolbarButton
-          icon={<Scissors className="w-3.5 h-3.5" />}
-          label="Cut"
-          tooltip="Razor / Cut Clip Tool (C)"
-          active={activeTool === 'cut'}
-          onClick={() => handleToolSelect('cut')}
-        />
-        <ToolbarButton
-          icon={<SplitSquareVertical className="w-3.5 h-3.5" />}
+          icon={<Scissors className="w-3.5 h-3.5 text-blue-400" />}
           label="Split"
-          tooltip="Split Clip at Playhead (Ctrl+B)"
-          onClick={() => {
-            if (selectedClipId) {
-              splitClipAtCurrentTime(selectedClipId);
-              notify('Split Clip', 'Clip berhasil dipotong pada playhead.', 'success');
-            } else {
-              notify('Split', 'Pilih clip pada timeline untuk memotong pada playhead.', 'warning');
-            }
-          }}
-        />
-        <ToolbarButton
-          icon={<Trash2 className="w-3.5 h-3.5" />}
-          label="Delete"
-          tooltip="Delete Selected Clip (Del)"
-          disabled={!selectedClipId}
-          onClick={() => {
-            if (selectedClipId) {
-              removeClip(selectedClipId);
-              clearSelection();
-              notify('Hapus', 'Clip dihapus dari timeline.', 'info');
-            }
-          }}
+          tooltip="Split at Playhead (Ctrl+K)"
+          onClick={handleSplit}
         />
 
-        <div className="h-4 w-px bg-[#262c3a] mx-1" />
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
 
-        {/* Group 4: Quick Asset Creators */}
+        {/* Group 4: Capture & Content Creation (Text, Voice, Screen Capture, Camera) */}
         <ToolbarButton
-          icon={<Type className="w-3.5 h-3.5" />}
+          icon={<Type className="w-3.5 h-3.5 text-amber-400" />}
           label="Text"
-          tooltip="Titles & Subtitles (Phase 5)"
-          onClick={() => handleSidebarTabSwitch('text', 'Teks & Judul')}
+          tooltip="Titles & Subtitles (Tools → Text)"
+          onClick={() => openDialog('textGenerator')}
         />
         <ToolbarButton
-          icon={<Music className="w-3.5 h-3.5" />}
-          label="Audio"
-          tooltip="Audio Library & BGM (Phase 8)"
-          onClick={() => handleSidebarTabSwitch('audio', 'Audio Library')}
+          icon={<Mic className="w-3.5 h-3.5 text-emerald-400" />}
+          label="Voice"
+          tooltip="Record Voice / Microphone"
+          onClick={() => openCaptureModal('voice')}
         />
         <ToolbarButton
-          icon={<Layers className="w-3.5 h-3.5" />}
-          label="Transition"
-          tooltip="Transitions Library (Phase 6)"
-          onClick={() => handleSidebarTabSwitch('transition', 'Transitions')}
+          icon={<Monitor className="w-3.5 h-3.5 text-cyan-400" />}
+          label="Screen"
+          tooltip="Screen Capture"
+          onClick={() => openCaptureModal('screen')}
         />
         <ToolbarButton
-          icon={<Sparkles className="w-3.5 h-3.5" />}
-          label="Effect"
-          tooltip="Visual Effects & Filters (Phase 6)"
-          onClick={() => handleSidebarTabSwitch('effects', 'Visual Effects')}
+          icon={<Camera className="w-3.5 h-3.5 text-rose-400" />}
+          label="Camera"
+          tooltip="Camera / Webcam Recording"
+          onClick={() => openCaptureModal('camera')}
         />
-      </div>
 
-      {/* Group 5: Export Action */}
-      <div className="flex items-center gap-1 shrink-0">
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
+
+        {/* Group 5: Playback Controls (Play, Stop) */}
         <ToolbarButton
-          icon={<Download className="w-3.5 h-3.5" />}
-          label="Export"
-          tooltip="Export Video (Phase 9 Rendering)"
-          highlight
-          onClick={() => {
-            notify(
-              'Export Video',
-              'Sistem rendering & 4K hardware-accelerated export engine akan hadir pada Phase 9.',
-              'info',
-              4000
-            );
-          }}
+          icon={
+            isPlaying ? (
+              <Pause className="w-3.5 h-3.5 fill-current text-white" />
+            ) : (
+              <Play className="w-3.5 h-3.5 fill-current text-white" />
+            )
+          }
+          label={isPlaying ? 'Pause' : 'Play'}
+          tooltip="Play / Pause (Space)"
+          highlight={isPlaying}
+          onClick={togglePlay}
+        />
+        <ToolbarButton
+          icon={<Square className="w-3.5 h-3.5 fill-current" />}
+          label="Stop"
+          tooltip="Stop"
+          onClick={stop}
+        />
+
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
+
+        {/* Group 6: Zoom Controls */}
+        <ToolbarButton
+          icon={<ZoomOut className="w-3.5 h-3.5" />}
+          label=""
+          tooltip="Zoom Out (Ctrl+-)"
+          onClick={zoomOut}
+        />
+        <ToolbarButton
+          icon={<ZoomIn className="w-3.5 h-3.5" />}
+          label=""
+          tooltip="Zoom In (Ctrl+=)"
+          onClick={zoomIn}
+        />
+        <ToolbarButton
+          icon={<Maximize2 className="w-3.5 h-3.5" />}
+          label="Fit"
+          tooltip="Fit Timeline to Window"
+          onClick={() => zoomToFit(1000)}
         />
       </div>
     </div>

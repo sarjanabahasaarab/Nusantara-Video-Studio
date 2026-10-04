@@ -1,6 +1,9 @@
 /**
  * Nusantara Video Studio - Selection Store
- * Manages active selected items (clips, tracks), active editor tool, and clipboard.
+ * Phase 3: Professional Timeline & Capture Engine
+ *
+ * Manages active multi-clip selection, selected track, tool modes,
+ * and multi-clip clipboard for Copy/Paste/Duplicate.
  */
 
 import { create } from 'zustand';
@@ -9,43 +12,82 @@ import { Clip } from '../types';
 export type EditorTool = 'select' | 'cut' | 'split' | 'hand' | 'zoom';
 
 interface SelectionState {
-  selectedClipId: string | null;
+  selectedClipIds: string[];
   selectedTrackId: string | null;
   activeTool: EditorTool;
-  clipboardClip: Clip | null;
+  clipboardClips: Clip[];
+
+  // Backward compatible getter
+  selectedClipId: string | null;
 
   // Actions
-  selectClip: (clipId: string | null, trackId?: string | null) => void;
+  selectClip: (clipId: string | null, isMulti?: boolean, isRange?: boolean) => void;
+  selectMultipleClips: (clipIds: string[]) => void;
+  toggleClipSelection: (clipId: string) => void;
   selectTrack: (trackId: string | null) => void;
   clearSelection: () => void;
   setActiveTool: (tool: EditorTool) => void;
+  copyClips: (clips: Clip[]) => void;
   copyClip: (clip: Clip) => void;
 }
 
-export const useSelectionStore = create<SelectionState>((set) => ({
-  selectedClipId: null,
+export const useSelectionStore = create<SelectionState>((set, get) => ({
+  selectedClipIds: [],
   selectedTrackId: null,
   activeTool: 'select',
-  clipboardClip: null,
+  clipboardClips: [],
 
-  selectClip: (clipId, trackId = null) =>
-    set({
-      selectedClipId: clipId,
-      selectedTrackId: trackId,
-    }),
+  // Computed alias
+  get selectedClipId() {
+    const ids = get().selectedClipIds;
+    return ids.length > 0 ? ids[ids.length - 1] : null;
+  },
 
-  selectTrack: (trackId) =>
-    set({
-      selectedTrackId: trackId,
-    }),
+  selectClip: (clipId, isMulti = false, isRange = false) => {
+    if (!clipId) {
+      set({ selectedClipIds: [], selectedClipId: null });
+      return;
+    }
 
-  clearSelection: () =>
+    if (isMulti) {
+      const current = get().selectedClipIds;
+      if (current.includes(clipId)) {
+        const next = current.filter((id) => id !== clipId);
+        set({ selectedClipIds: next, selectedClipId: next.length > 0 ? next[next.length - 1] : null });
+      } else {
+        const next = [...current, clipId];
+        set({ selectedClipIds: next, selectedClipId: clipId });
+      }
+    } else {
+      set({ selectedClipIds: [clipId], selectedClipId: clipId });
+    }
+  },
+
+  selectMultipleClips: (clipIds) => {
     set({
-      selectedClipId: null,
-      selectedTrackId: null,
-    }),
+      selectedClipIds: clipIds,
+      selectedClipId: clipIds.length > 0 ? clipIds[clipIds.length - 1] : null,
+    });
+  },
+
+  toggleClipSelection: (clipId) => {
+    const current = get().selectedClipIds;
+    if (current.includes(clipId)) {
+      const next = current.filter((id) => id !== clipId);
+      set({ selectedClipIds: next, selectedClipId: next.length > 0 ? next[next.length - 1] : null });
+    } else {
+      const next = [...current, clipId];
+      set({ selectedClipIds: next, selectedClipId: clipId });
+    }
+  },
+
+  selectTrack: (selectedTrackId) => set({ selectedTrackId }),
+
+  clearSelection: () => set({ selectedClipIds: [], selectedClipId: null, selectedTrackId: null }),
 
   setActiveTool: (activeTool) => set({ activeTool }),
 
-  copyClip: (clipboardClip) => set({ clipboardClip }),
+  copyClips: (clipboardClips) => set({ clipboardClips }),
+
+  copyClip: (clip) => set({ clipboardClips: [clip] }),
 }));

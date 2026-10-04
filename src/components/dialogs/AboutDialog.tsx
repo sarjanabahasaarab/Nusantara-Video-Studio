@@ -16,15 +16,15 @@ export const AboutDialog: React.FC = () => {
 
   const phases = [
     { phase: 'Phase 1', name: 'Foundation', status: 'completed' },
-    { phase: 'Phase 2', name: 'Media Library', status: 'upcoming' },
-    { phase: 'Phase 3', name: 'Timeline Editor', status: 'upcoming' },
-    { phase: 'Phase 4', name: 'Video & Audio Editing', status: 'upcoming' },
-    { phase: 'Phase 5', name: 'Text & Subtitle', status: 'upcoming' },
-    { phase: 'Phase 6', name: 'Effects & Transitions', status: 'upcoming' },
-    { phase: 'Phase 7', name: 'Advanced Editing', status: 'upcoming' },
-    { phase: 'Phase 8', name: 'Audio Studio', status: 'upcoming' },
-    { phase: 'Phase 9', name: 'Rendering & Export', status: 'upcoming' },
-    { phase: 'Phase 10', name: 'Final Release', status: 'upcoming' },
+    { phase: 'Phase 2', name: 'Media Library & Ingestion', status: 'completed' },
+    { phase: 'Phase 3', name: 'Timeline & Capture Engine', status: 'completed' },
+    { phase: 'Phase 4', name: 'Video & Audio Advanced Editing', status: 'upcoming' },
+    { phase: 'Phase 5', name: 'Advanced Text & Subtitle Studio', status: 'upcoming' },
+    { phase: 'Phase 6', name: 'Effects & Transitions Engine', status: 'upcoming' },
+    { phase: 'Phase 7', name: 'Advanced Motion & Animation', status: 'upcoming' },
+    { phase: 'Phase 8', name: 'Audio Studio & Mixing', status: 'upcoming' },
+    { phase: 'Phase 9', name: 'Rendering & 4K Export Engine', status: 'upcoming' },
+    { phase: 'Phase 10', name: 'Final Release & Ecosystem', status: 'upcoming' },
   ];
 
   return (
@@ -44,7 +44,7 @@ export const AboutDialog: React.FC = () => {
           Professional Desktop Video Editor
         </p>
         <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#1f2535] text-[10px] text-slate-300 font-mono">
-          Version 0.1.0 • Phase 1 Foundation
+          Version 0.3.0 • Phase 3 Timeline & Capture Engine
         </span>
 
         <p className="text-[11px] text-slate-400 mt-3 leading-relaxed max-w-sm">

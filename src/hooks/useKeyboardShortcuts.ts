@@ -18,9 +18,18 @@ export function useKeyboardShortcuts() {
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
   const markSaved = useProjectStore((s) => s.markSaved);
+
   const togglePlay = useTimelineStore((s) => s.togglePlay);
-  const removeClip = useTimelineStore((s) => s.removeClip);
-  const selectedClipId = useSelectionStore((s) => s.selectedClipId);
+  const previousFrame = useTimelineStore((s) => s.previousFrame);
+  const nextFrame = useTimelineStore((s) => s.nextFrame);
+  const splitSelectedClipsAtPlayhead = useTimelineStore((s) => s.splitSelectedClipsAtPlayhead);
+  const duplicateSelectedClips = useTimelineStore((s) => s.duplicateSelectedClips);
+  const deleteSelectedClips = useTimelineStore((s) => s.deleteSelectedClips);
+  const copySelectedClips = useTimelineStore((s) => s.copySelectedClips);
+  const pasteClipsAtPlayhead = useTimelineStore((s) => s.pasteClipsAtPlayhead);
+  const selectAllClips = useTimelineStore((s) => s.selectAllClips);
+
+  const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);
   const clearSelection = useSelectionStore((s) => s.clearSelection);
   const openDialog = useUIStore((s) => s.openDialog);
   const notify = useUIStore((s) => s.notify);
@@ -39,6 +48,20 @@ export function useKeyboardShortcuts() {
       if (e.code === 'Space') {
         e.preventDefault();
         togglePlay();
+        return;
+      }
+
+      // Arrow Left -> Previous Frame (Requirement 8)
+      if (e.key === 'ArrowLeft' && !isCtrlOrCmd) {
+        e.preventDefault();
+        previousFrame();
+        return;
+      }
+
+      // Arrow Right -> Next Frame (Requirement 8)
+      if (e.key === 'ArrowRight' && !isCtrlOrCmd) {
+        e.preventDefault();
+        nextFrame();
         return;
       }
 
@@ -131,13 +154,44 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Delete / Backspace -> Delete selected clip
+      // Ctrl + K -> Split at Playhead (Requirement 11)
+      if (isCtrlOrCmd && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (selectedClipIds.length > 0) {
+          splitSelectedClipsAtPlayhead();
+          notify('Split Clip', 'Clip terpilih berhasil dipotong pada playhead.', 'success', 2000);
+        } else {
+          notify('Split', 'Pilih clip pada timeline untuk dipotong.', 'warning');
+        }
+        return;
+      }
+
+      // Ctrl + D -> Duplicate (Requirement 11)
+      if (isCtrlOrCmd && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        if (selectedClipIds.length > 0) {
+          duplicateSelectedClips();
+          notify('Duplicate', 'Clip berhasil diduplikasi.', 'success', 2000);
+        } else {
+          notify('Duplicate', 'Pilih clip pada timeline untuk diduplikasi.', 'warning');
+        }
+        return;
+      }
+
+      // Ctrl + A -> Select All (Requirement 14)
+      if (isCtrlOrCmd && (e.key === 'a' || e.key === 'A')) {
+        e.preventDefault();
+        selectAllClips();
+        notify('Select All', 'Semua clip pada timeline dipilih.', 'info', 1500);
+        return;
+      }
+
+      // Delete / Backspace -> Delete selected clip(s) (Requirement 11, 14)
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (selectedClipId) {
+        if (selectedClipIds.length > 0) {
           e.preventDefault();
-          removeClip(selectedClipId);
-          clearSelection();
-          notify('Clip Dihapus', 'Clip terpilih telah dihapus dari timeline.', 'info', 2000);
+          deleteSelectedClips();
+          notify('Clip Dihapus', `${selectedClipIds.length} clip telah dihapus dari timeline.`, 'info', 2000);
           return;
         }
       }
@@ -145,34 +199,59 @@ export function useKeyboardShortcuts() {
       // Ctrl + X -> Cut
       if (isCtrlOrCmd && (e.key === 'x' || e.key === 'X')) {
         e.preventDefault();
-        if (selectedClipId) {
-          notify('Cut Clip', 'Cut clip akan aktif penuh pada Phase 3 & 4.', 'info');
+        const count = copySelectedClips();
+        if (count > 0) {
+          deleteSelectedClips();
+          notify('Cut Clip', `${count} clip dipotong ke clipboard.`, 'info', 2000);
         } else {
           notify('Cut', 'Pilih clip pada timeline terlebih dahulu.', 'warning');
         }
         return;
       }
 
-      // Ctrl + C -> Copy
+      // Ctrl + C -> Copy (Requirement 11, 14)
       if (isCtrlOrCmd && (e.key === 'c' || e.key === 'C')) {
         e.preventDefault();
-        if (selectedClipId) {
-          notify('Copy Clip', 'Clip disalin ke clipboard Nusantara Studio.', 'info');
+        const count = copySelectedClips();
+        if (count > 0) {
+          notify('Copy Clip', `${count} clip disalin ke clipboard Nusantara Studio.`, 'info', 2000);
         } else {
           notify('Copy', 'Pilih clip pada timeline terlebih dahulu.', 'warning');
         }
         return;
       }
 
-      // Ctrl + V -> Paste
+      // Ctrl + V -> Paste (Requirement 11, 14)
       if (isCtrlOrCmd && (e.key === 'v' || e.key === 'V')) {
         e.preventDefault();
-        notify('Paste Clip', 'Paste clip pada playhead akan aktif pada Phase 3.', 'info');
+        const success = pasteClipsAtPlayhead();
+        if (success) {
+          notify('Paste Clip', 'Clip ditempatkan pada posisi playhead.', 'success', 2000);
+        } else {
+          notify('Paste', 'Clipboard kosong. Salin clip terlebih dahulu.', 'warning');
+        }
         return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentProject, markSaved, notify, openDialog, redo, removeClip, selectedClipId, clearSelection, togglePlay, undo]);
+  }, [
+    currentProject,
+    markSaved,
+    notify,
+    openDialog,
+    redo,
+    undo,
+    togglePlay,
+    previousFrame,
+    nextFrame,
+    splitSelectedClipsAtPlayhead,
+    duplicateSelectedClips,
+    deleteSelectedClips,
+    copySelectedClips,
+    pasteClipsAtPlayhead,
+    selectAllClips,
+    selectedClipIds,
+  ]);
 }

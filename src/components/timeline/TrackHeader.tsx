@@ -1,6 +1,8 @@
 /**
  * Nusantara Video Studio - Track Header
- * Controls track state (lock, mute, hide, delete, rename)
+ * Phase 3: Professional Timeline & Capture Engine
+ *
+ * Controls track state: Lock (🔒), Hide/Show (👁), Mute (🔊), Solo, Rename, and Delete.
  */
 
 import React, { useState } from 'react';
@@ -30,6 +32,7 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({ track }) => {
   const toggleLock = useTimelineStore((s) => s.toggleTrackLock);
   const toggleMute = useTimelineStore((s) => s.toggleTrackMute);
   const toggleHidden = useTimelineStore((s) => s.toggleTrackHidden);
+  const toggleSolo = useTimelineStore((s) => s.toggleTrackSolo);
   const deleteTrack = useTimelineStore((s) => s.deleteTrack);
   const renameTrack = useTimelineStore((s) => s.renameTrack);
 
@@ -68,8 +71,9 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({ track }) => {
           {isEditingName ? (
             <input
               type="text"
-              value={tempName}
               autoFocus
+              value={tempName}
+              onChange={(e) => setTempName(e.target.value)}
               onBlur={handleFinishEditing}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleFinishEditing();
@@ -78,93 +82,105 @@ export const TrackHeader: React.FC<TrackHeaderProps> = ({ track }) => {
                   setIsEditingName(false);
                 }
               }}
-              onChange={(e) => setTempName(e.target.value)}
-              className="bg-[#0b0c10] border border-blue-500 rounded px-1 py-0.5 text-[11px] text-white w-28 focus:outline-none"
+              className="bg-[#0b0d13] border border-blue-500 rounded px-1 text-[11px] text-white focus:outline-none w-28"
             />
           ) : (
             <span
               onDoubleClick={() => setIsEditingName(true)}
-              title="Double click to rename track"
-              className="text-[11px] font-medium text-slate-200 truncate cursor-text"
+              className="text-[11px] font-semibold text-slate-200 truncate cursor-text"
+              title="Double click untuk rename track"
             >
               {track.name}
             </span>
           )}
         </div>
 
-        {/* Delete Track button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (confirm(`Hapus track "${track.name}"?`)) {
+            if (confirm(`Hapus track "${track.name}" beserta seluruh isinya?`)) {
               deleteTrack(track.id);
             }
           }}
-          className="p-1 rounded text-slate-500 hover:text-rose-400 hover:bg-[#202532] transition-colors"
+          className="text-slate-600 hover:text-rose-400 p-0.5 rounded transition-colors"
           title="Hapus Track"
         >
           <Trash2 className="w-3 h-3" />
         </button>
       </div>
 
-      {/* Bottom: Track Action Controls */}
-      <div className="flex items-center justify-between pt-1 border-t border-[#1b202c]">
+      {/* Bottom: Track Action Badges & Buttons */}
+      <div className="flex items-center justify-between pt-1">
         <div className="flex items-center gap-1">
-          {/* Lock / Unlock */}
+          {/* Lock Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
               toggleLock(track.id);
             }}
-            className={`p-1 rounded text-[10px] transition-colors ${
+            className={`p-1 rounded transition-colors ${
               track.locked
-                ? 'bg-amber-950/60 text-amber-400 border border-amber-800/40'
-                : 'text-slate-500 hover:text-slate-300'
+                ? 'bg-amber-950/60 text-amber-400 border border-amber-600/40'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-[#1a1f2b]'
             }`}
-            title={track.locked ? 'Unlock Track' : 'Lock Track'}
+            title={track.locked ? 'Track Terkunci (Unlock)' : 'Kunci Track (Lock)'}
           >
             {track.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
           </button>
 
-          {/* Video: Hide / Show */}
-          {track.type === 'video' && (
+          {/* Hide/Show for Video or Mute for Audio */}
+          {track.type === 'video' ? (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 toggleHidden(track.id);
               }}
-              className={`p-1 rounded text-[10px] transition-colors ${
+              className={`p-1 rounded transition-colors ${
                 track.hidden
-                  ? 'bg-rose-950/60 text-rose-400 border border-rose-800/40'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-rose-950/60 text-rose-400 border border-rose-600/40'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-[#1a1f2b]'
               }`}
-              title={track.hidden ? 'Show Track in Preview' : 'Hide Track in Preview'}
+              title={track.hidden ? 'Tampilkan Video Track' : 'Sembunyikan Video Track'}
             >
               {track.hidden ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
             </button>
-          )}
-
-          {/* Audio: Mute / Unmute */}
-          {track.type === 'audio' && (
+          ) : (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 toggleMute(track.id);
               }}
-              className={`p-1 rounded text-[10px] transition-colors ${
+              className={`p-1 rounded transition-colors ${
                 track.muted
-                  ? 'bg-rose-950/60 text-rose-400 border border-rose-800/40'
-                  : 'text-slate-500 hover:text-slate-300'
+                  ? 'bg-rose-950/60 text-rose-400 border border-rose-600/40'
+                  : 'text-slate-500 hover:text-slate-300 hover:bg-[#1a1f2b]'
               }`}
-              title={track.muted ? 'Unmute Track' : 'Mute Track'}
+              title={track.muted ? 'Unmute Audio Track' : 'Mute Audio Track'}
             >
               {track.muted ? <VolumeX className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
             </button>
           )}
+
+          {/* Solo Button (Requirement 34) */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleSolo(track.id);
+            }}
+            className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase transition-colors ${
+              track.solo
+                ? 'bg-amber-500 text-black shadow-xs'
+                : 'text-slate-500 hover:text-slate-300 hover:bg-[#1a1f2b]'
+            }`}
+            title="Solo Track (hanya putar track ini)"
+          >
+            S
+          </button>
         </div>
 
+        {/* Clip count indicator */}
         <span className="text-[10px] text-slate-500 font-mono">
-          {track.clips.length} clip{track.clips.length !== 1 ? 's' : ''}
+          {track.clips.length} {track.clips.length === 1 ? 'clip' : 'clips'}
         </span>
       </div>
     </div>

@@ -9,6 +9,7 @@ import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUIStore, SidebarTab } from '../../stores/uiStore';
 import { useMediaStore } from '../../stores/mediaStore';
+import { useCaptureStore } from '../../stores/captureStore';
 import { fileService } from '../../services/fileService';
 import { mediaService } from '../../services/mediaService';
 
@@ -44,8 +45,17 @@ export const MenuBar: React.FC = () => {
   const removeClip = useTimelineStore((s) => s.removeClip);
 
   const selectedClipId = useSelectionStore((s) => s.selectedClipId);
+  const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);
   const clearSelection = useSelectionStore((s) => s.clearSelection);
 
+  const copySelectedClips = useTimelineStore((s) => s.copySelectedClips);
+  const pasteClipsAtPlayhead = useTimelineStore((s) => s.pasteClipsAtPlayhead);
+  const duplicateSelectedClips = useTimelineStore((s) => s.duplicateSelectedClips);
+  const deleteSelectedClips = useTimelineStore((s) => s.deleteSelectedClips);
+  const selectAllClips = useTimelineStore((s) => s.selectAllClips);
+  const splitSelectedClipsAtPlayhead = useTimelineStore((s) => s.splitSelectedClipsAtPlayhead);
+
+  const openCaptureModal = useCaptureStore((s) => s.openModal);
   const openDialog = useUIStore((s) => s.openDialog);
   const toggleFullscreen = useUIStore((s) => s.toggleFullscreen);
   const setActiveSidebarTab = useUIStore((s) => s.setActiveSidebarTab);
@@ -195,28 +205,74 @@ export const MenuBar: React.FC = () => {
           divider: true,
         },
         {
+          label: 'Split at Playhead',
+          shortcut: 'Ctrl+K',
+          action: () => {
+            if (selectedClipIds.length > 0) {
+              splitSelectedClipsAtPlayhead();
+              notify('Split Clip', 'Clip berhasil dipotong pada playhead.', 'success');
+            } else {
+              notify('Split', 'Pilih clip pada timeline untuk dipotong.', 'warning');
+            }
+          },
+          divider: true,
+        },
+        {
           label: 'Cut',
           shortcut: 'Ctrl+X',
-          action: () => comingSoon('Cut Clip', 'Phase 3 & 4'),
+          action: () => {
+            const count = copySelectedClips();
+            if (count > 0) {
+              deleteSelectedClips();
+              notify('Cut Clip', `${count} clip dipotong ke clipboard.`, 'info');
+            } else {
+              notify('Cut', 'Pilih clip pada timeline terlebih dahulu.', 'warning');
+            }
+          },
         },
         {
           label: 'Copy',
           shortcut: 'Ctrl+C',
-          action: () => comingSoon('Copy Clip', 'Phase 3 & 4'),
+          action: () => {
+            const count = copySelectedClips();
+            if (count > 0) {
+              notify('Copy Clip', `${count} clip disalin ke clipboard.`, 'info');
+            } else {
+              notify('Copy', 'Pilih clip pada timeline terlebih dahulu.', 'warning');
+            }
+          },
         },
         {
           label: 'Paste',
           shortcut: 'Ctrl+V',
-          action: () => comingSoon('Paste Clip', 'Phase 3 & 4'),
+          action: () => {
+            const success = pasteClipsAtPlayhead();
+            if (success) {
+              notify('Paste Clip', 'Clip ditempatkan pada playhead timeline.', 'success');
+            } else {
+              notify('Paste', 'Clipboard kosong. Salin clip terlebih dahulu.', 'warning');
+            }
+          },
+        },
+        {
+          label: 'Duplicate',
+          shortcut: 'Ctrl+D',
+          action: () => {
+            if (selectedClipIds.length > 0) {
+              duplicateSelectedClips();
+              notify('Duplicate', 'Clip berhasil diduplikasi.', 'success');
+            } else {
+              notify('Duplicate', 'Pilih clip pada timeline terlebih dahulu.', 'warning');
+            }
+          },
           divider: true,
         },
         {
           label: 'Delete',
           shortcut: 'Del',
           action: () => {
-            if (selectedClipId) {
-              removeClip(selectedClipId);
-              clearSelection();
+            if (selectedClipIds.length > 0) {
+              deleteSelectedClips();
               notify('Delete', 'Clip terpilih dihapus.', 'info');
             } else {
               notify('Delete', 'Pilih item pada timeline untuk dihapus.', 'warning');
@@ -226,7 +282,10 @@ export const MenuBar: React.FC = () => {
         {
           label: 'Select All',
           shortcut: 'Ctrl+A',
-          action: () => comingSoon('Select All', 'Phase 3'),
+          action: () => {
+            selectAllClips();
+            notify('Select All', 'Semua clip pada timeline dipilih.', 'info');
+          },
         },
       ],
     },
@@ -333,12 +392,20 @@ export const MenuBar: React.FC = () => {
       title: 'Tools',
       items: [
         {
-          label: 'Settings',
-          action: () => openDialog('settings'),
+          label: 'Text (Titles & Subtitles)...',
+          action: () => openDialog('textGenerator'),
         },
         {
-          label: 'Keyboard Shortcuts',
-          action: () => openDialog('shortcuts'),
+          label: 'Voice Recording...',
+          action: () => openCaptureModal('voice'),
+        },
+        {
+          label: 'Screen Capture...',
+          action: () => openCaptureModal('screen'),
+        },
+        {
+          label: 'Camera Recording...',
+          action: () => openCaptureModal('camera'),
           divider: true,
         },
         {
@@ -347,6 +414,14 @@ export const MenuBar: React.FC = () => {
             setActiveSidebarTab('media');
             notify('Media Manager', 'Membuka panel Media Library.', 'info', 1500);
           },
+        },
+        {
+          label: 'Settings',
+          action: () => openDialog('settings'),
+        },
+        {
+          label: 'Keyboard Shortcuts',
+          action: () => openDialog('shortcuts'),
         },
       ],
     },

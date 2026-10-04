@@ -1,12 +1,16 @@
 /**
  * Nusantara Video Studio - Timeline Ruler
- * Interactive time ruler with tick marks and scrubber scrub-drag
+ * Phase 3: Professional Timeline & Capture Engine
+ *
+ * Interactive time ruler with SMPTE timecode ticks, snapped playhead scrub-drag,
+ * and marker pins visualization.
  */
 
 import React, { useRef } from 'react';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useProjectStore } from '../../stores/projectStore';
-import { formatDuration } from '../../utils/timecode';
+import { secondsToTimecode } from '../../utils/timecode';
+import { Bookmark } from 'lucide-react';
 
 interface TimelineRulerProps {
   totalWidth: number;
@@ -16,21 +20,34 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({ totalWidth }) => {
   const zoom = useTimelineStore((s) => s.zoom);
   const setCurrentTime = useTimelineStore((s) => s.setCurrentTime);
   const setIsPlaying = useTimelineStore((s) => s.setIsPlaying);
-  const duration = useProjectStore((s) => s.currentProject.timeline.duration);
+  const getSnappedTime = useTimelineStore((s) => s.getSnappedTime);
+
+  const currentProject = useProjectStore((s) => s.currentProject);
+  const duration = currentProject.timeline.duration;
+  const markers = currentProject.timeline.markers || [];
 
   const rulerRef = useRef<HTMLDivElement>(null);
   const isScrubbingRef = useRef(false);
 
-  // Determine tick interval in seconds based on zoom (px per second)
+  // Dynamic tick intervals based on zoom
   let stepSeconds = 5;
-  if (zoom > 100) stepSeconds = 1;
-  else if (zoom > 50) stepSeconds = 2;
+  if (zoom > 120) stepSeconds = 1;
+  else if (zoom > 60) stepSeconds = 2;
   else if (zoom > 25) stepSeconds = 5;
   else if (zoom > 10) stepSeconds = 10;
   else stepSeconds = 30;
 
   const totalTicks = Math.ceil(duration / stepSeconds);
   const ticks = Array.from({ length: totalTicks + 1 }, (_, i) => i * stepSeconds);
+
+  const updateTimeFromPointer = (e: React.PointerEvent | PointerEvent) => {
+    if (!rulerRef.current) return;
+    const rect = rulerRef.current.getBoundingClientRect();
+    const offsetX = e.clientX - rect.left;
+    const rawTime = Math.max(0, Math.min(duration, offsetX / zoom));
+    const snapped = getSnappedTime(rawTime);
+    setCurrentTime(snapped);
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     isScrubbingRef.current = true;
@@ -53,21 +70,14 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({ totalWidth }) => {
     window.addEventListener('pointerup', handlePointerUp);
   };
 
-  const updateTimeFromPointer = (e: React.PointerEvent | PointerEvent) => {
-    if (!rulerRef.current) return;
-    const rect = rulerRef.current.getBoundingClientRect();
-    const offsetX = e.clientX - rect.left;
-    const calculatedTime = Math.max(0, Math.min(duration, offsetX / zoom));
-    setCurrentTime(calculatedTime);
-  };
-
   return (
     <div
       ref={rulerRef}
+      style={{ width: `${Math.max(totalWidth, duration * zoom + 300)}px` }}
       onPointerDown={handlePointerDown}
-      style={{ width: `${Math.max(totalWidth, duration * zoom)}px` }}
-      className="h-6 bg-[#10131a] border-b border-[#202534] relative cursor-pointer select-none shrink-0"
+      className="h-7 bg-[#141722] border-b border-[#212634] relative cursor-pointer select-none overflow-hidden"
     >
+      {/* Timecode Ticks and Labels */}
       {ticks.map((sec) => {
         const left = sec * zoom;
         return (
@@ -76,26 +86,58 @@ export const TimelineRuler: React.FC<TimelineRulerProps> = ({ totalWidth }) => {
             style={{ left: `${left}px` }}
             className="absolute top-0 bottom-0 flex flex-col justify-between pointer-events-none"
           >
-            {/* Major tick line */}
-            <div className="w-px h-2 bg-[#333d52]" />
-            {/* Time label */}
-            <span className="text-[9px] font-mono text-slate-400 pl-1 -mt-1">
-              {formatDuration(sec)}
+            {/* Tick line */}
+            <div className="w-px h-2 bg-slate-600" />
+
+            {/* SMPTE / Sec Label */}
+            <span className="font-mono text-[9px] text-slate-400 pl-1 -translate-y-0.5 select-none font-semibold">
+              {zoom > 80 ? secondsToTimecode(sec) : `${Math.floor(sec / 60)}:${(sec % 60).toString().padStart(2, '0')}`}
             </span>
-            <div className="w-px h-1.5 bg-[#252c3c]" />
           </div>
         );
       })}
 
-      {/* Sub-second minor ticks when zoomed in */}
+      {/* Minor Sub-second Ticks when zoomed in */}
       {zoom > 60 &&
-        Array.from({ length: Math.ceil(duration) }, (_, i) => i).map((sec) => (
+        Array.from({ length: Math.ceil(duration) }, (_, i) => i).map((sec) => {
+          if (sec % stepSeconds === 0) return null;
+          return (
+            <div
+              key={`sub-${sec}`}
+              style={{ left: `${sec * zoom}px` }}
+              className="absolute top-0 w-px h-1.5 bg-slate-700 pointer-events-none"
+            />
+          );
+        })}
+
+      {/* Timeline Markers Pins (Requirement 35) */}
+      {markers.map((marker) => {
+        const left = marker.time * zoom;
+        return (
           <div
-            key={`sub-${sec}`}
-            style={{ left: `${sec * zoom}px` }}
-            className="absolute top-3 h-1.5 w-px bg-[#262e3f] pointer-events-none"
-          />
-        ))}
+            key={marker.id}
+            style={{ left: `${left}px` }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentTime(marker.time);
+            }}
+            className="group absolute top-0 z-30 cursor-pointer -translate-x-1/2 flex flex-col items-center"
+            title={`${marker.name} (${secondsToTimecode(marker.time)})`}
+          >
+            <div
+              style={{ backgroundColor: marker.color || '#38bdf8' }}
+              className="w-3.5 h-3.5 rounded-b-sm flex items-center justify-center shadow-md transform hover:scale-125 transition-transform"
+            >
+              <Bookmark className="w-2.5 h-2.5 text-black fill-current" />
+            </div>
+
+            {/* Hover Tooltip */}
+            <div className="hidden group-hover:block absolute top-4 bg-[#0a0c12] text-white text-[9px] font-mono px-1.5 py-0.5 rounded shadow-lg border border-white/20 whitespace-nowrap pointer-events-none z-50">
+              {marker.name}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 };
