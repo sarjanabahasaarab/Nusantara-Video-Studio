@@ -7,7 +7,14 @@ import { create } from 'zustand';
 import { AppNotification, NotificationType } from '../types';
 
 export type SidebarTab = 'media' | 'audio' | 'text' | 'transition' | 'effects' | 'filters';
-export type ActiveDialog = 'newProject' | 'projectSettings' | 'settings' | 'about' | 'shortcuts' | null;
+export type ActiveDialog =
+  | 'newProject'
+  | 'projectSettings'
+  | 'settings'
+  | 'about'
+  | 'shortcuts'
+  | 'mediaTest'
+  | null;
 
 interface UIState {
   sidebarOpen: boolean;

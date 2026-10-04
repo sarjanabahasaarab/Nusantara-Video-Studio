@@ -1,6 +1,6 @@
 [package]
 name = "nusantara-video-studio"
-version = "0.1.0"
+version = "0.2.0"
 description = "Professional Desktop Video Editor"
 authors = ["Nusantara Video Studio Team"]
 edition = "2021"

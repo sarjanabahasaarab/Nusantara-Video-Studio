@@ -8,7 +8,9 @@ import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUIStore, SidebarTab } from '../../stores/uiStore';
+import { useMediaStore } from '../../stores/mediaStore';
 import { fileService } from '../../services/fileService';
+import { mediaService } from '../../services/mediaService';
 
 interface MenuItem {
   label: string;
@@ -60,7 +62,46 @@ export const MenuBar: React.FC = () => {
     return () => window.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const comingSoon = (featureName: string, phase = 'Phase 2') => {
+  const handleImportMedia = async () => {
+    setActiveSidebarTab('media');
+    const files = await mediaService.openFileDialog();
+    if (files.length === 0) return;
+
+    const mediaStore = useMediaStore.getState();
+    mediaStore.setImportProgress({
+      active: true,
+      current: 0,
+      total: files.length,
+      filename: files[0]?.name || '',
+      percentage: 0,
+    });
+
+    try {
+      const res = await mediaService.processFiles(
+        files,
+        mediaStore.items,
+        (current, total, filename, percentage) => {
+          mediaStore.setImportProgress({ active: true, current, total, filename, percentage });
+        }
+      );
+      if (res.imported.length > 0) {
+        await mediaStore.addMultipleMedia(res.imported);
+        notify('Media Diimport', `✓ ${res.imported.length} media berhasil diimport.`, 'success', 3000);
+      }
+      if (res.duplicates.length > 0) {
+        notify('Duplikat Ditemukan', `⚠ ${res.duplicates.length} berkas sudah ada di project.`, 'warning', 3500);
+      }
+      if (res.errors.length > 0) {
+        notify('Format Ditolak', `✕ ${res.errors[0].name}: ${res.errors[0].reason}`, 'error', 4000);
+      }
+    } catch (err) {
+      notify('Gagal Import', String(err), 'error');
+    } finally {
+      mediaStore.setImportProgress({ active: false });
+    }
+  };
+
+  const comingSoon = (featureName: string, phase = 'Phase 3') => {
     notify(
       featureName,
       `Fitur "${featureName}" akan tersedia secara penuh pada ${phase}.`,
@@ -110,6 +151,12 @@ export const MenuBar: React.FC = () => {
               notify('Simpan Proyek Sebagai', `Proyek berhasil disimpan sebagai "${customName}.nvproj".`, 'success');
             }
           },
+          divider: true,
+        },
+        {
+          label: 'Import Media...',
+          shortcut: 'Ctrl+I',
+          action: handleImportMedia,
           divider: true,
         },
         {
@@ -296,7 +343,10 @@ export const MenuBar: React.FC = () => {
         },
         {
           label: 'Media Manager',
-          action: () => comingSoon('Media Manager', 'Phase 2'),
+          action: () => {
+            setActiveSidebarTab('media');
+            notify('Media Manager', 'Membuka panel Media Library.', 'info', 1500);
+          },
         },
       ],
     },
@@ -323,11 +373,15 @@ export const MenuBar: React.FC = () => {
       items: [
         {
           label: 'Documentation',
-          action: () => comingSoon('Dokumentasi Nusantara Video Studio', 'Phase 2'),
+          action: () => comingSoon('Dokumentasi Nusantara Video Studio', 'Phase 3'),
         },
         {
           label: 'Keyboard Shortcuts',
           action: () => openDialog('shortcuts'),
+        },
+        {
+          label: 'Media Library Test Suite...',
+          action: () => openDialog('mediaTest'),
           divider: true,
         },
         {

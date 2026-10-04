@@ -8,6 +8,19 @@ export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type FrameRate = 24 | 25 | 30 | 50 | 60;
 export type TrackType = 'video' | 'audio';
 export type ClipType = 'video' | 'audio' | 'image' | 'text';
+export type MediaType = 'video' | 'audio' | 'image';
+export type MediaFilterType = 'all' | 'video' | 'audio' | 'image';
+export type MediaSortField = 'name' | 'createdAt' | 'duration' | 'size' | 'type';
+export type MediaSortOrder = 'asc' | 'desc';
+export type MediaViewMode = 'grid' | 'list';
+
+export interface ImportProgress {
+  active: boolean;
+  current?: number;
+  total?: number;
+  filename?: string;
+  percentage?: number;
+}
 
 export interface ProjectSettings {
   name: string;
@@ -26,6 +39,7 @@ export interface MediaMetadata {
   fps?: number;
   bitrate?: number;
   channels?: number;
+  sampleRate?: number;
   codec?: string;
   thumbnailUrl?: string;
 }
@@ -35,9 +49,23 @@ export interface MediaItem {
   name: string;
   path: string;
   type: ClipType;
+  extension: string;
+  mimeType?: string;
   size: number;
+  duration?: number;
+  width?: number;
+  height?: number;
+  fps?: number;
+  codec?: string;
+  sampleRate?: number;
+  channels?: number;
+  thumbnail?: string;
+  isOffline?: boolean;
+  blobUrl?: string;
+  lastModified?: number;
   createdAt: string;
-  metadata: MediaMetadata;
+  updatedAt?: string;
+  metadata?: MediaMetadata;
 }
 
 export interface ClipTransform {

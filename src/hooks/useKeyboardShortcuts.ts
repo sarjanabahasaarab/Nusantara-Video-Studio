@@ -9,7 +9,9 @@ import { useProjectStore } from '../stores/projectStore';
 import { useTimelineStore } from '../stores/timelineStore';
 import { useSelectionStore } from '../stores/selectionStore';
 import { useUIStore } from '../stores/uiStore';
+import { useMediaStore } from '../stores/mediaStore';
 import { fileService } from '../services/fileService';
+import { mediaService } from '../services/mediaService';
 
 export function useKeyboardShortcuts() {
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -67,6 +69,47 @@ export function useKeyboardShortcuts() {
         fileService.saveProjectToFile(currentProject);
         markSaved();
         notify('Simpan Proyek', `File "${currentProject.name}.nvproj" berhasil disimpan.`, 'success');
+        return;
+      }
+
+      // Ctrl + I -> Import Media
+      if (isCtrlOrCmd && !e.shiftKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault();
+        useUIStore.getState().setActiveSidebarTab('media');
+        mediaService.openFileDialog().then(async (files) => {
+          if (!files || files.length === 0) return;
+          const mediaStore = useMediaStore.getState();
+          mediaStore.setImportProgress({
+            active: true,
+            current: 0,
+            total: files.length,
+            filename: files[0]?.name || '',
+            percentage: 0,
+          });
+          try {
+            const res = await mediaService.processFiles(
+              files,
+              mediaStore.items,
+              (current, total, filename, percentage) => {
+                mediaStore.setImportProgress({ active: true, current, total, filename, percentage });
+              }
+            );
+            if (res.imported.length > 0) {
+              await mediaStore.addMultipleMedia(res.imported);
+              notify('Media Diimport', `✓ ${res.imported.length} media berhasil diimport.`, 'success', 3000);
+            }
+            if (res.duplicates.length > 0) {
+              notify('Duplikat Ditemukan', `⚠ ${res.duplicates.length} berkas sudah ada di project.`, 'warning', 3500);
+            }
+            if (res.errors.length > 0) {
+              notify('Format Ditolak', `✕ ${res.errors[0].name}: ${res.errors[0].reason}`, 'error', 4000);
+            }
+          } catch (err) {
+            notify('Gagal Import', String(err), 'error');
+          } finally {
+            mediaStore.setImportProgress({ active: false });
+          }
+        });
         return;
       }
 

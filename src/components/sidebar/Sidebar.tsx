@@ -21,6 +21,7 @@ import { useUIStore, SidebarTab } from '../../stores/uiStore';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { Clip } from '../../types';
+import { MediaLibrary } from './MediaLibrary';
 
 export const Sidebar: React.FC = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -175,50 +176,26 @@ export const Sidebar: React.FC = () => {
         ))}
       </div>
 
-      {/* Search Bar */}
-      <div className="p-2 border-b border-[#1c212c]">
-        <div className="relative flex items-center">
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" />
-          <input
-            type="text"
-            placeholder={`Cari di ${tabs.find((t) => t.id === activeTab)?.label}...`}
-            className="w-full bg-[#0a0c10] border border-[#232938] rounded-md pl-8 pr-2.5 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
-          />
-        </div>
-      </div>
-
-      {/* Tab Content Body */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
-        {activeTab === 'media' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-blue-950/30 border border-blue-800/30 flex items-center justify-center text-blue-400 mb-3 shadow-inner">
-              <Film className="w-7 h-7" />
-            </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">Belum ada media.</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
-              Import video, gambar, atau audio untuk mulai mengedit proyek Anda.
-            </p>
-            <div className="flex flex-col gap-2 w-full max-w-[200px]">
-              <button
-                onClick={handleImportMedia}
-                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium shadow transition-colors"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Import Media</span>
-              </button>
-              <button
-                onClick={() => handleAddSampleClip('video')}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
-                title="Tambahkan sample clip untuk menguji timeline & property panel"
-              >
-                <PlusCircle className="w-3 h-3 text-blue-400" />
-                <span>+ Sample Video Clip</span>
-              </button>
+      {/* Render full-featured Media Library when activeTab is 'media' */}
+      {activeTab === 'media' ? (
+        <MediaLibrary />
+      ) : (
+        <>
+          {/* Search Bar for other tabs */}
+          <div className="p-2 border-b border-[#1c212c]">
+            <div className="relative flex items-center">
+              <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder={`Cari di ${tabs.find((t) => t.id === activeTab)?.label}...`}
+                className="w-full bg-[#0a0c10] border border-[#232938] rounded-md pl-8 pr-2.5 py-1 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              />
             </div>
           </div>
-        )}
 
-        {activeTab === 'audio' && (
+          {/* Tab Content Body for other tabs */}
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
+            {activeTab === 'audio' && (
           <div className="flex flex-col items-center justify-center text-center my-auto py-6">
             <div className="w-14 h-14 rounded-2xl bg-emerald-950/30 border border-emerald-800/30 flex items-center justify-center text-emerald-400 mb-3">
               <Music className="w-7 h-7" />
@@ -294,10 +271,12 @@ export const Sidebar: React.FC = () => {
 
         {/* Phase Roadmap Note */}
         <div className="p-2.5 rounded-lg bg-[#0e1017] border border-[#1e2330] text-[10px] text-slate-400">
-          <div className="font-semibold text-slate-300 mb-0.5">Phase 1 Foundation</div>
-          <p>Sidebar siap menerima asset manager, drag-and-drop ingestion, dan preview thumbnails pada Phase 2.</p>
+          <div className="font-semibold text-slate-300 mb-0.5">Phase 2 Media Library</div>
+          <p>Media Library aktif dan siap menerima import video, audio, dan gambar.</p>
         </div>
       </div>
-    </aside>
+    </>
+  )}
+</aside>
   );
 };

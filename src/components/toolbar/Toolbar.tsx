@@ -19,12 +19,15 @@ import {
   Layers,
   Sparkles,
   Download,
+  Upload,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore, EditorTool } from '../../stores/selectionStore';
 import { useUIStore, SidebarTab } from '../../stores/uiStore';
+import { useMediaStore } from '../../stores/mediaStore';
 import { fileService } from '../../services/fileService';
+import { mediaService } from '../../services/mediaService';
 
 interface ToolbarButtonProps {
   icon: React.ReactNode;
@@ -96,6 +99,45 @@ export const Toolbar: React.FC = () => {
     notify(label, `Membuka tab ${label} di sidebar.`, 'info', 1200);
   };
 
+  const handleImportMedia = async () => {
+    setActiveSidebarTab('media');
+    const files = await mediaService.openFileDialog();
+    if (!files || files.length === 0) return;
+
+    const mediaStore = useMediaStore.getState();
+    mediaStore.setImportProgress({
+      active: true,
+      current: 0,
+      total: files.length,
+      filename: files[0]?.name || '',
+      percentage: 0,
+    });
+
+    try {
+      const res = await mediaService.processFiles(
+        files,
+        mediaStore.items,
+        (current, total, filename, percentage) => {
+          mediaStore.setImportProgress({ active: true, current, total, filename, percentage });
+        }
+      );
+      if (res.imported.length > 0) {
+        await mediaStore.addMultipleMedia(res.imported);
+        notify('Media Diimport', `✓ ${res.imported.length} media berhasil diimport.`, 'success', 3000);
+      }
+      if (res.duplicates.length > 0) {
+        notify('Duplikat Ditemukan', `⚠ ${res.duplicates.length} berkas sudah ada di project.`, 'warning', 3500);
+      }
+      if (res.errors.length > 0) {
+        notify('Format Ditolak', `✕ ${res.errors[0].name}: ${res.errors[0].reason}`, 'error', 4000);
+      }
+    } catch (err) {
+      notify('Gagal Import', String(err), 'error');
+    } finally {
+      mediaStore.setImportProgress({ active: false });
+    }
+  };
+
   return (
     <div className="h-10 bg-[#141720] border-b border-[#212632] px-3 flex items-center justify-between gap-2 overflow-x-auto select-none">
       {/* Group 1: Project Operations */}
@@ -129,6 +171,13 @@ export const Toolbar: React.FC = () => {
             markSaved();
             notify('Simpan Proyek', `File "${currentProject.name}.nvproj" berhasil disimpan.`, 'success');
           }}
+        />
+        <ToolbarButton
+          icon={<Upload className="w-3.5 h-3.5 text-blue-400" />}
+          label="Import"
+          tooltip="Import Media (Ctrl+I)"
+          highlight={true}
+          onClick={handleImportMedia}
         />
 
         <div className="h-4 w-px bg-[#262c3a] mx-1" />

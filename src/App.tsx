@@ -19,6 +19,11 @@ import { ProjectSettingsDialog } from './components/dialogs/ProjectSettingsDialo
 import { SettingsDialog } from './components/dialogs/SettingsDialog';
 import { AboutDialog } from './components/dialogs/AboutDialog';
 import { ShortcutsDialog } from './components/dialogs/ShortcutsDialog';
+import { MediaPreviewModal } from './components/dialogs/MediaPreviewModal';
+import { MediaPropertiesModal } from './components/dialogs/MediaPropertiesModal';
+import { RelinkMediaDialog } from './components/dialogs/RelinkMediaDialog';
+import { ImportProgressModal } from './components/dialogs/ImportProgressModal';
+import { MediaTestModal } from './components/dialogs/MediaTestModal';
 
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoSave } from './hooks/useAutoSave';
@@ -34,14 +39,17 @@ export default function App() {
 
   const notify = useUIStore((s) => s.notify);
 
+  const activeDialog = useUIStore((s) => s.activeDialog);
+  const closeDialog = useUIStore((s) => s.closeDialog);
+
   // Initialize Database Service
   useEffect(() => {
     databaseService.initialize().then(() => {
       notify(
-        'Nusantara Video Studio v0.1.0',
-        'Phase 1 Foundation siap digunakan. Tekan Space untuk Play/Pause.',
+        'Nusantara Video Studio v0.2.0',
+        'Phase 2 Media Library & Import aktif. Tekan Import Media atau Drag & Drop berkas untuk memulai.',
         'info',
-        3500
+        4000
       );
     });
   }, [notify]);
@@ -63,12 +71,22 @@ export default function App() {
       {/* 5. Status Bar */}
       <StatusBar />
 
-      {/* Modals & Dialogs */}
+      {/* Phase 1 Modals & Dialogs */}
       <NewProjectDialog />
       <ProjectSettingsDialog />
       <SettingsDialog />
       <AboutDialog />
       <ShortcutsDialog />
+
+      {/* Phase 2 Media Modals */}
+      <MediaPreviewModal />
+      <MediaPropertiesModal />
+      <RelinkMediaDialog />
+      <ImportProgressModal />
+      <MediaTestModal
+        isOpen={activeDialog === 'mediaTest'}
+        onClose={closeDialog}
+      />
 
       {/* Toast Notifications System */}
       <ToastContainer />
