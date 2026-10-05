@@ -15,6 +15,7 @@ export type ActiveDialog =
   | 'shortcuts'
   | 'mediaTest'
   | 'textGenerator'
+  | 'phase4Test'
   | null;
 
 interface UIState {

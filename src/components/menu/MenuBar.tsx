@@ -43,6 +43,7 @@ export const MenuBar: React.FC = () => {
   const addTrack = useTimelineStore((s) => s.addTrack);
   const splitClipAtCurrentTime = useTimelineStore((s) => s.splitClipAtCurrentTime);
   const removeClip = useTimelineStore((s) => s.removeClip);
+  const resetClipProperties = useTimelineStore((s) => s.resetClipProperties);
 
   const selectedClipId = useSelectionStore((s) => s.selectedClipId);
   const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);
@@ -321,10 +322,10 @@ export const MenuBar: React.FC = () => {
       items: [
         {
           label: 'Split Clip',
-          shortcut: 'Ctrl+B',
+          shortcut: 'Ctrl+K',
           action: () => {
-            if (selectedClipId) {
-              splitClipAtCurrentTime(selectedClipId);
+            if (selectedClipIds.length > 0) {
+              splitSelectedClipsAtPlayhead();
               notify('Split Clip', 'Clip berhasil dipotong pada playhead.', 'success');
             } else {
               notify('Split', 'Pilih clip terlebih dahulu untuk dipotong.', 'warning');
@@ -332,24 +333,101 @@ export const MenuBar: React.FC = () => {
           },
         },
         {
-          label: 'Trim Start / End',
-          action: () => comingSoon('Trim Tool', 'Phase 3 & 4'),
-        },
-        {
           label: 'Duplicate',
           shortcut: 'Ctrl+D',
-          action: () => comingSoon('Duplicate Clip', 'Phase 3'),
+          action: () => {
+            if (selectedClipIds.length > 0) {
+              duplicateSelectedClips();
+              notify('Duplicate', 'Clip berhasil diduplikasi.', 'success');
+            } else {
+              notify('Duplicate', 'Pilih clip terlebih dahulu untuk diduplikasi.', 'warning');
+            }
+          },
+        },
+        {
+          label: 'Reset Properties',
+          action: () => {
+            if (selectedClipId) {
+              resetClipProperties(selectedClipId);
+              notify('Reset', 'Transform dan efek clip direset ke default.', 'info');
+            } else {
+              notify('Reset', 'Pilih clip terlebih dahulu.', 'warning');
+            }
+          },
           divider: true,
         },
         {
           label: 'Delete Clip',
           shortcut: 'Del',
           action: () => {
-            if (selectedClipId) {
-              removeClip(selectedClipId);
-              clearSelection();
+            if (selectedClipIds.length > 0) {
+              deleteSelectedClips();
               notify('Delete', 'Clip dihapus.', 'info');
+            } else {
+              notify('Delete', 'Pilih clip terlebih dahulu.', 'warning');
             }
+          },
+        },
+      ],
+    },
+    {
+      title: 'Effects',
+      items: [
+        {
+          label: 'Effect Library (Color, Blur, Stylize)...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Effect Library', 'Membuka panel 20+ efek visual.', 'info', 1500);
+          },
+        },
+        {
+          label: 'Transitions Library...',
+          action: () => {
+            setActiveSidebarTab('transition');
+            notify('Transitions', 'Membuka Transition Library.', 'info', 1500);
+          },
+          divider: true,
+        },
+        {
+          label: 'Animation Presets...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Animation', 'Pilih preset Entrance, Exit, atau Motion.', 'info', 2000);
+          },
+        },
+        {
+          label: 'Chroma Key (Green/Blue Screen)...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Chroma Key', 'Pilih preset Green Screen atau Blue Screen.', 'info', 2000);
+          },
+        },
+        {
+          label: 'Vector Masking...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Masking', 'Tambahkan Rectangle, Ellipse, Linear, atau Polygon mask.', 'info', 2000);
+          },
+        },
+        {
+          label: 'Motion Tracking...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Motion Tracking', 'Membuka panel Point Motion Tracking.', 'info', 2000);
+          },
+        },
+        {
+          label: 'Speed & Speed Ramp...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('Speed', 'Atur playback rate 0.25x - 4x atau kurva Speed Ramp.', 'info', 2000);
+          },
+        },
+        {
+          label: 'Picture-in-Picture (PiP)...',
+          action: () => {
+            setActiveSidebarTab('effects');
+            notify('PiP', 'Atur layout overlay Picture-in-Picture.', 'info', 2000);
           },
         },
       ],

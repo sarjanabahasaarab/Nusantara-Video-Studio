@@ -8,10 +8,11 @@ import { Project } from '../types';
 export class FileService {
   /**
    * Serializes project to formatted JSON string (.nvproj format)
+   * Phase 4: Full serialization of keyframes, transitions, masks, chroma key, speed, effects, and PiP.
    */
   serializeProject(project: Project): string {
     const filePayload = {
-      projectVersion: 1,
+      projectVersion: 2,
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
@@ -20,9 +21,9 @@ export class FileService {
       media: project.media,
       timeline: project.timeline,
       metadata: {
-        appVersion: '0.1.0',
+        appVersion: '0.4.0',
         appName: 'Nusantara Video Studio',
-        lastSavedBy: 'Nusantara Video Studio v0.1.0',
+        lastSavedBy: 'Nusantara Video Studio v0.4.0',
       },
     };
 
@@ -30,7 +31,7 @@ export class FileService {
   }
 
   /**
-   * Validates and parses a string as a valid .nvproj Project object
+   * Validates and parses a string as a valid .nvproj Project object (supports v1 and v2)
    */
   parseProject(jsonString: string): { valid: boolean; project?: Project; error?: string } {
     try {
@@ -40,10 +41,10 @@ export class FileService {
         return { valid: false, error: 'File format is not a valid JSON structure.' };
       }
 
-      if (parsed.projectVersion !== 1) {
+      if (parsed.projectVersion !== 1 && parsed.projectVersion !== 2) {
         return {
           valid: false,
-          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1.`,
+          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1 or 2.`,
         };
       }
 

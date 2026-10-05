@@ -18,11 +18,11 @@ export const AboutDialog: React.FC = () => {
     { phase: 'Phase 1', name: 'Foundation', status: 'completed' },
     { phase: 'Phase 2', name: 'Media Library & Ingestion', status: 'completed' },
     { phase: 'Phase 3', name: 'Timeline & Capture Engine', status: 'completed' },
-    { phase: 'Phase 4', name: 'Video & Audio Advanced Editing', status: 'upcoming' },
+    { phase: 'Phase 4', name: 'Advanced Effects & Motion Engine', status: 'completed' },
     { phase: 'Phase 5', name: 'Advanced Text & Subtitle Studio', status: 'upcoming' },
-    { phase: 'Phase 6', name: 'Effects & Transitions Engine', status: 'upcoming' },
-    { phase: 'Phase 7', name: 'Advanced Motion & Animation', status: 'upcoming' },
-    { phase: 'Phase 8', name: 'Audio Studio & Mixing', status: 'upcoming' },
+    { phase: 'Phase 6', name: 'Audio Studio & Mixing', status: 'upcoming' },
+    { phase: 'Phase 7', name: 'Color Grading & LUT Studio', status: 'upcoming' },
+    { phase: 'Phase 8', name: 'Multi-Camera & Sync Engine', status: 'upcoming' },
     { phase: 'Phase 9', name: 'Rendering & 4K Export Engine', status: 'upcoming' },
     { phase: 'Phase 10', name: 'Final Release & Ecosystem', status: 'upcoming' },
   ];
@@ -43,8 +43,8 @@ export const AboutDialog: React.FC = () => {
         <p className="text-xs font-medium text-blue-400 mt-0.5">
           Professional Desktop Video Editor
         </p>
-        <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#1f2535] text-[10px] text-slate-300 font-mono">
-          Version 0.3.0 • Phase 3 Timeline & Capture Engine
+        <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#1f2535] text-[10px] text-blue-300 font-mono border border-blue-500/30">
+          Version 0.4.0 • Phase 4 Advanced Effects & Motion Engine
         </span>
 
         <p className="text-[11px] text-slate-400 mt-3 leading-relaxed max-w-sm">

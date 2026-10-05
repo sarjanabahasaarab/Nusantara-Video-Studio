@@ -1,9 +1,10 @@
 /**
  * Nusantara Video Studio - Right Properties Panel / Inspector
- * Phase 3: Professional Timeline & Capture Engine
+ * Phase 4: Advanced Effects & Motion Engine
  *
- * Full inspector for Transform, Appearance (Color), Basic Effects,
- * Text Styling, and Audio Controls (Volume, Keyframes, Fades, Pan).
+ * Full inspector supporting Transform, Keyframe Animations, Animation Presets,
+ * Effect Stack, Chroma Key (Green Screen), Vector Masking, Speed Ramping,
+ * Picture-in-Picture (PiP), Motion Tracking, and Color Appearance.
  */
 
 import React, { useState } from 'react';
@@ -18,9 +19,13 @@ import {
   Maximize2,
   FlipHorizontal,
   FlipVertical,
-  Plus,
-  Trash2,
   SlidersHorizontal,
+  Diamond,
+  Wand2,
+  Activity,
+  Layout,
+  Crosshair,
+  Trash2,
 } from 'lucide-react';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useProjectStore } from '../../stores/projectStore';
@@ -28,32 +33,71 @@ import { useTimelineStore } from '../../stores/timelineStore';
 import { useUIStore } from '../../stores/uiStore';
 import { SliderInput } from '../common/SliderInput';
 
+// Phase 4 Modular Panels
+import { EffectsStackPanel } from '../effects/EffectsStackPanel';
+import { KeyframeInspector } from '../keyframes/KeyframeInspector';
+import { AnimationPresetsPanel } from '../animation/AnimationPresetsPanel';
+import { ChromaKeyPanel } from '../chromakey/ChromaKeyPanel';
+import { MaskingPanel } from '../masking/MaskingPanel';
+import { SpeedRampPanel } from '../speed/SpeedRampPanel';
+import { PictureInPicturePanel } from '../pip/PictureInPicturePanel';
+import { MotionTrackingPanel } from '../tracking/MotionTrackingPanel';
+import { Clip } from '../../types';
+
+export type PropertiesTab =
+  | 'transform'
+  | 'effects'
+  | 'chroma'
+  | 'mask'
+  | 'pip'
+  | 'speed'
+  | 'animation'
+  | 'keyframes'
+  | 'tracking'
+  | 'appearance'
+  | 'audio'
+  | 'text';
+
 export const PropertiesPanel: React.FC = () => {
   const selectedClipId = useSelectionStore((s) => s.selectedClipId);
   const propertiesWidth = useUIStore((s) => s.propertiesWidth);
+  const notify = useUIStore((s) => s.notify);
+
   const tracks = useProjectStore((s) => s.currentProject.timeline.tracks);
   const projectSettings = useProjectStore((s) => s.currentProject.settings);
 
+  // Phase 4 Project Store actions
+  const updateClipKeyframes = useProjectStore((s) => s.updateClipKeyframes);
+  const updateClipEffects = useProjectStore((s) => s.updateClipEffects);
+  const updateClipMasks = useProjectStore((s) => s.updateClipMasks);
+  const updateClipChromaKey = useProjectStore((s) => s.updateClipChromaKey);
+  const updateClipSpeed = useProjectStore((s) => s.updateClipSpeed);
+  const updateClipPiP = useProjectStore((s) => s.updateClipPiP);
+  const updateClipTracking = useProjectStore((s) => s.updateClipTracking);
+
+  // Timeline Store actions
+  const currentTime = useTimelineStore((s) => s.currentTime);
   const updateClipTransform = useTimelineStore((s) => s.updateClipTransform);
   const updateClipAppearance = useTimelineStore((s) => s.updateClipAppearance);
-  const updateClipBasicEffects = useTimelineStore((s) => s.updateClipBasicEffects);
   const updateClipAudio = useTimelineStore((s) => s.updateClipAudio);
   const updateClipText = useTimelineStore((s) => s.updateClipText);
   const resetClipProperties = useTimelineStore((s) => s.resetClipProperties);
   const addAudioKeyframe = useTimelineStore((s) => s.addAudioKeyframe);
   const removeAudioKeyframe = useTimelineStore((s) => s.removeAudioKeyframe);
 
-  const [activeTab, setActiveTab] = useState<'transform' | 'appearance' | 'effects' | 'audio' | 'text'>('transform');
+  const [activeTab, setActiveTab] = useState<PropertiesTab>('transform');
 
   // Find currently selected clip across tracks
-  let selectedClip = null;
+  let selectedClip: Clip | null = null;
   let parentTrack = null;
+  const allClips: Clip[] = [];
+
   for (const track of tracks) {
+    track.clips.forEach((c) => allClips.push(c));
     const found = track.clips.find((c) => c.id === selectedClipId);
     if (found) {
       selectedClip = found;
       parentTrack = track;
-      break;
     }
   }
 
@@ -89,14 +133,6 @@ export const PropertiesPanel: React.FC = () => {
     tint: 0,
   };
 
-  const effects = selectedClip?.basicEffects || {
-    blur: 0,
-    sharpen: 0,
-    vignette: 0,
-    grayscale: 0,
-    sepia: 0,
-  };
-
   const audio = selectedClip?.audio || {
     volume: 100,
     pan: 0,
@@ -117,6 +153,37 @@ export const PropertiesPanel: React.FC = () => {
     alignment: 'center',
   };
 
+  const handleApplyTrackingToTarget = (targetClipId: string, trackingData: any) => {
+    // When tracking applies to a target clip, attach tracking or create keyframe trajectory
+    const target = allClips.find((c) => c.id === targetClipId);
+    if (!target) return;
+
+    if (trackingData.points && trackingData.points.length > 0) {
+      // Map normalized tracking points (0 to 1) to target transform coordinates (-960 to +960)
+      const xKeyframes = trackingData.points.map((pt: any, idx: number) => ({
+        id: `kf-trk-x-${idx}`,
+        time: pt.time,
+        value: Math.round((pt.x - 0.5) * 1920),
+        interpolation: 'linear' as const,
+      }));
+      const yKeyframes = trackingData.points.map((pt: any, idx: number) => ({
+        id: `kf-trk-y-${idx}`,
+        time: pt.time,
+        value: Math.round((pt.y - 0.5) * 1080),
+        interpolation: 'linear' as const,
+      }));
+
+      const existingKfs = target.animatedProperties || [];
+      const updated = [
+        ...existingKfs.filter((k) => k.property !== 'positionX' && k.property !== 'positionY'),
+        { property: 'positionX', keyframes: xKeyframes },
+        { property: 'positionY', keyframes: yKeyframes },
+      ];
+
+      updateClipKeyframes(targetClipId, updated);
+    }
+  };
+
   return (
     <aside
       style={{ width: `${propertiesWidth}px` }}
@@ -127,7 +194,7 @@ export const PropertiesPanel: React.FC = () => {
         <div className="flex items-center gap-2">
           <Sliders className="w-3.5 h-3.5 text-blue-400" />
           <span className="text-[11px] font-semibold text-slate-200 tracking-wide uppercase">
-            Properties
+            Inspector
           </span>
         </div>
         {selectedClip ? (
@@ -138,7 +205,7 @@ export const PropertiesPanel: React.FC = () => {
             <button
               onClick={() => resetClipProperties(selectedClip!.id)}
               className="p-1 rounded text-slate-400 hover:text-white hover:bg-[#1a1f2b] transition-colors"
-              title="Reset Semua Parameter ke Default (Requirement 15)"
+              title="Reset Semua Parameter ke Default"
             >
               <RotateCcw className="w-3 h-3" />
             </button>
@@ -148,45 +215,115 @@ export const PropertiesPanel: React.FC = () => {
 
       {/* Sub-tab Navigation if Clip Selected */}
       {selectedClip && (
-        <div className="grid grid-cols-4 border-b border-[#1f2430] bg-[#101219] text-[10px]">
+        <div className="flex items-center gap-1 px-2 py-1.5 border-b border-[#1f2430] bg-[#101219] overflow-x-auto select-none no-scrollbar text-[10px]">
           {isVideoOrImage && (
             <>
               <button
                 onClick={() => setActiveTab('transform')}
-                className={`py-1.5 transition-colors ${
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
                   activeTab === 'transform'
-                    ? 'border-b-2 border-blue-500 text-blue-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
                 }`}
               >
                 Transform
               </button>
               <button
+                onClick={() => setActiveTab('effects')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'effects'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Effects ({selectedClip.effects?.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveTab('chroma')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'chroma'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Chroma Key
+              </button>
+              <button
+                onClick={() => setActiveTab('mask')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'mask'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Mask ({selectedClip.masks?.length || 0})
+              </button>
+              <button
+                onClick={() => setActiveTab('pip')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'pip'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                PiP
+              </button>
+              <button
+                onClick={() => setActiveTab('speed')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'speed'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Speed
+              </button>
+              <button
+                onClick={() => setActiveTab('animation')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'animation'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Presets
+              </button>
+              <button
+                onClick={() => setActiveTab('keyframes')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'keyframes'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Keyframes
+              </button>
+              <button
+                onClick={() => setActiveTab('tracking')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'tracking'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
+                }`}
+              >
+                Tracking
+              </button>
+              <button
                 onClick={() => setActiveTab('appearance')}
-                className={`py-1.5 transition-colors ${
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
                   activeTab === 'appearance'
-                    ? 'border-b-2 border-blue-500 text-blue-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
                 }`}
               >
                 Color
               </button>
               <button
-                onClick={() => setActiveTab('effects')}
-                className={`py-1.5 transition-colors ${
-                  activeTab === 'effects'
-                    ? 'border-b-2 border-blue-500 text-blue-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Effects
-              </button>
-              <button
                 onClick={() => setActiveTab('audio')}
-                className={`py-1.5 transition-colors ${
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
                   activeTab === 'audio'
-                    ? 'border-b-2 border-blue-500 text-blue-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d2a]'
                 }`}
               >
                 Audio
@@ -195,35 +332,57 @@ export const PropertiesPanel: React.FC = () => {
           )}
 
           {isAudio && (
-            <button
-              onClick={() => setActiveTab('audio')}
-              className="col-span-4 py-1.5 border-b-2 border-emerald-500 text-emerald-400 font-semibold"
-            >
-              Audio Settings & Keyframes
-            </button>
+            <>
+              <button
+                onClick={() => setActiveTab('audio')}
+                className="px-3 py-1 bg-emerald-600 text-white rounded-md font-semibold text-[10px]"
+              >
+                Audio Settings & Keyframes
+              </button>
+              <button
+                onClick={() => setActiveTab('speed')}
+                className={`px-3 py-1 rounded-md font-medium text-[10px] transition-colors ${
+                  activeTab === 'speed' ? 'bg-blue-600 text-white' : 'text-slate-400'
+                }`}
+              >
+                Audio Speed
+              </button>
+            </>
           )}
 
           {isText && (
             <>
               <button
                 onClick={() => setActiveTab('text')}
-                className={`col-span-2 py-1.5 transition-colors ${
-                  activeTab === 'text'
-                    ? 'border-b-2 border-amber-500 text-amber-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'text' ? 'bg-amber-600 text-white font-semibold' : 'text-slate-400'
                 }`}
               >
                 Text Styling
               </button>
               <button
                 onClick={() => setActiveTab('transform')}
-                className={`col-span-2 py-1.5 transition-colors ${
-                  activeTab === 'transform'
-                    ? 'border-b-2 border-amber-500 text-amber-400 font-semibold'
-                    : 'text-slate-400 hover:text-slate-200'
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'transform' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400'
                 }`}
               >
                 Transform
+              </button>
+              <button
+                onClick={() => setActiveTab('animation')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'animation' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Presets
+              </button>
+              <button
+                onClick={() => setActiveTab('keyframes')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'keyframes' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Keyframes
               </button>
             </>
           )}
@@ -240,7 +399,7 @@ export const PropertiesPanel: React.FC = () => {
             </div>
             <h3 className="text-xs font-semibold text-slate-200 mb-1">No Selection</h3>
             <p className="text-[11px] text-slate-400 max-w-[200px] leading-relaxed mb-4">
-              Pilih clip pada timeline atau monitor preview untuk menyesuaikan atribut transform, warna, teks, dan audio.
+              Pilih clip pada timeline atau monitor preview untuk menyesuaikan atribut transform, efek, chroma key, masking, kecepatan, dan animasi.
             </p>
 
             {/* Project Specs Summary */}
@@ -276,7 +435,7 @@ export const PropertiesPanel: React.FC = () => {
                 <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300">
                   <span className="flex items-center gap-1.5">
                     <Move className="w-3.5 h-3.5 text-blue-400" />
-                    <span>Transform</span>
+                    <span>Transform & Keyframes</span>
                   </span>
                   <div className="flex items-center gap-1">
                     <button
@@ -371,10 +530,91 @@ export const PropertiesPanel: React.FC = () => {
                   unit="%"
                   onChange={(v) => updateClipTransform(selectedClip!.id, { opacity: v / 100 })}
                 />
+
+                {/* Quick Keyframe Jump Link */}
+                <button
+                  onClick={() => setActiveTab('keyframes')}
+                  className="mt-2 py-1.5 px-3 rounded-lg bg-[#141824] hover:bg-[#1a2133] border border-[#222a3d] text-blue-400 font-medium flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <Diamond className="w-3.5 h-3.5" />
+                  <span>Buka Keyframe Curves & Interpolasi</span>
+                </button>
               </div>
             )}
 
-            {/* 2. Appearance (Color & Exposure) Tab */}
+            {/* 2. Effect Stack Tab (Requirement 16) */}
+            {activeTab === 'effects' && (
+              <EffectsStackPanel
+                clip={selectedClip}
+                onUpdateEffects={(effects) => updateClipEffects(selectedClip!.id, effects)}
+              />
+            )}
+
+            {/* 3. Chroma Key / Green Screen (Requirement 8) */}
+            {activeTab === 'chroma' && (
+              <ChromaKeyPanel
+                clip={selectedClip}
+                onUpdateChromaKey={(settings) => updateClipChromaKey(selectedClip!.id, settings)}
+              />
+            )}
+
+            {/* 4. Masking (Requirement 9) */}
+            {activeTab === 'mask' && (
+              <MaskingPanel
+                clip={selectedClip}
+                onUpdateMasks={(masks) => updateClipMasks(selectedClip!.id, masks)}
+              />
+            )}
+
+            {/* 5. Picture-in-Picture (Requirement 13) */}
+            {activeTab === 'pip' && (
+              <PictureInPicturePanel
+                clip={selectedClip}
+                onUpdatePiP={(pip) => updateClipPiP(selectedClip!.id, pip)}
+                onUpdateTransform={(t) => updateClipTransform(selectedClip!.id, t)}
+              />
+            )}
+
+            {/* 6. Speed & Speed Ramping (Requirement 11 & 12) */}
+            {activeTab === 'speed' && (
+              <SpeedRampPanel
+                clip={selectedClip}
+                onUpdateSpeed={(speed) => updateClipSpeed(selectedClip!.id, speed)}
+                onNotify={notify}
+              />
+            )}
+
+            {/* 7. Animation Presets (Requirement 7) */}
+            {activeTab === 'animation' && (
+              <AnimationPresetsPanel
+                clip={selectedClip}
+                onUpdateKeyframes={(kfs) => updateClipKeyframes(selectedClip!.id, kfs)}
+                onNotify={notify}
+              />
+            )}
+
+            {/* 8. Keyframe Inspector (Requirement 5 & 6) */}
+            {activeTab === 'keyframes' && (
+              <KeyframeInspector
+                clip={selectedClip}
+                currentTime={currentTime}
+                onUpdateKeyframes={(kfs) => updateClipKeyframes(selectedClip!.id, kfs)}
+              />
+            )}
+
+            {/* 9. Motion Tracking (Requirement 10) */}
+            {activeTab === 'tracking' && (
+              <MotionTrackingPanel
+                clip={selectedClip}
+                currentTime={currentTime}
+                availableTargetClips={allClips.filter((c) => c.id !== selectedClip!.id)}
+                onUpdateTracking={(trk) => updateClipTracking(selectedClip!.id, trk)}
+                onApplyTrackingToTarget={handleApplyTrackingToTarget}
+                onNotify={notify}
+              />
+            )}
+
+            {/* 10. Color Appearance Tab */}
             {activeTab === 'appearance' && (
               <div className="flex flex-col gap-3">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
@@ -438,63 +678,7 @@ export const PropertiesPanel: React.FC = () => {
               </div>
             )}
 
-            {/* 3. Basic Effects Tab */}
-            {activeTab === 'effects' && (
-              <div className="flex flex-col gap-3">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-                  <span>Basic Effects</span>
-                </span>
-
-                <SliderInput
-                  label="Blur"
-                  value={effects.blur}
-                  min={0}
-                  max={40}
-                  step={0.5}
-                  unit="px"
-                  onChange={(v) => updateClipBasicEffects(selectedClip!.id, { blur: v })}
-                />
-
-                <SliderInput
-                  label="Sharpen"
-                  value={effects.sharpen}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  onChange={(v) => updateClipBasicEffects(selectedClip!.id, { sharpen: v })}
-                />
-
-                <SliderInput
-                  label="Vignette"
-                  value={effects.vignette}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  onChange={(v) => updateClipBasicEffects(selectedClip!.id, { vignette: v })}
-                />
-
-                <SliderInput
-                  label="Grayscale"
-                  value={effects.grayscale}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  onChange={(v) => updateClipBasicEffects(selectedClip!.id, { grayscale: v })}
-                />
-
-                <SliderInput
-                  label="Sepia"
-                  value={effects.sepia}
-                  min={0}
-                  max={100}
-                  unit="%"
-                  onChange={(v) => updateClipBasicEffects(selectedClip!.id, { sepia: v })}
-                />
-              </div>
-            )}
-
-            {/* 4. Audio Tab (Volume, Fades, Keyframes) */}
+            {/* 11. Audio Tab */}
             {activeTab === 'audio' && (
               <div className="flex flex-col gap-3">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
@@ -557,7 +741,6 @@ export const PropertiesPanel: React.FC = () => {
                       }
                       className="px-2 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600/50 border border-emerald-500/40 text-emerald-300 text-[10px] font-medium flex items-center gap-1 transition-colors"
                     >
-                      <Plus className="w-3 h-3" />
                       <span>Add KF</span>
                     </button>
                   </div>
@@ -589,7 +772,7 @@ export const PropertiesPanel: React.FC = () => {
               </div>
             )}
 
-            {/* 5. Text Styling Tab */}
+            {/* 12. Text Styling Tab */}
             {activeTab === 'text' && (
               <div className="flex flex-col gap-3">
                 <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">

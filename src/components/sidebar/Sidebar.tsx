@@ -22,6 +22,8 @@ import { useTimelineStore } from '../../stores/timelineStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { Clip } from '../../types';
 import { MediaLibrary } from './MediaLibrary';
+import { TransitionsSidebar } from './TransitionsSidebar';
+import { EffectsSidebar } from './EffectsSidebar';
 
 export const Sidebar: React.FC = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -179,9 +181,13 @@ export const Sidebar: React.FC = () => {
         ))}
       </div>
 
-      {/* Render full-featured Media Library when activeTab is 'media' */}
+      {/* Main Tab Renderers */}
       {activeTab === 'media' ? (
         <MediaLibrary />
+      ) : activeTab === 'transition' ? (
+        <TransitionsSidebar />
+      ) : activeTab === 'effects' || activeTab === 'filters' ? (
+        <EffectsSidebar />
       ) : (
         <>
           {/* Search Bar for other tabs */}
@@ -196,90 +202,63 @@ export const Sidebar: React.FC = () => {
             </div>
           </div>
 
-          {/* Tab Content Body for other tabs */}
+          {/* Tab Content Body for audio and text tabs */}
           <div className="flex-1 overflow-y-auto p-4 flex flex-col justify-between">
             {activeTab === 'audio' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-950/30 border border-emerald-800/30 flex items-center justify-center text-emerald-400 mb-3">
-              <Music className="w-7 h-7" />
-            </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">Audio Library</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
-              BGM, sound effects, voiceover, dan track audio akan tersedia pada Phase 8.
-            </p>
-            <button
-              onClick={() => handleAddSampleClip('audio')}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
-            >
-              <PlusCircle className="w-3 h-3 text-emerald-400" />
-              <span>+ Sample Audio Clip</span>
-            </button>
-          </div>
-        )}
+              <div className="flex flex-col items-center justify-center text-center my-auto py-6">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-950/30 border border-emerald-800/30 flex items-center justify-center text-emerald-400 mb-3">
+                  <Music className="w-7 h-7" />
+                </div>
+                <h3 className="text-xs font-semibold text-slate-200 mb-1">Audio Studio</h3>
+                <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
+                  Volume envelopes, keyframing, dan multi-track mixing sudah aktif di timeline. BGM & Sound FX library akan hadir di Phase 8.
+                </p>
+                <button
+                  onClick={() => handleAddSampleClip('audio')}
+                  className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
+                >
+                  <PlusCircle className="w-3 h-3 text-emerald-400" />
+                  <span>+ Sample Audio Clip</span>
+                </button>
+              </div>
+            )}
 
-        {activeTab === 'text' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-amber-950/30 border border-amber-800/30 flex items-center justify-center text-amber-400 mb-3">
-              <Type className="w-7 h-7" />
-            </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">Text & Subtitle</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
-              Template judul, Lower Thirds, subtitle editor, dan font styling akan hadir pada Phase 5.
-            </p>
-            <button
-              onClick={() => handleAddSampleClip('text')}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
-            >
-              <PlusCircle className="w-3 h-3 text-amber-400" />
-              <span>+ Sample Title Clip</span>
-            </button>
-          </div>
-        )}
+            {activeTab === 'text' && (
+              <div className="flex flex-col items-center justify-center text-center my-auto py-6">
+                <div className="w-14 h-14 rounded-2xl bg-amber-950/30 border border-amber-800/30 flex items-center justify-center text-amber-400 mb-3">
+                  <Type className="w-7 h-7" />
+                </div>
+                <h3 className="text-xs font-semibold text-slate-200 mb-1">Text & Subtitle Studio</h3>
+                <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
+                  Buat Judul, Subtitle, Caption, atau Lower Third dengan kustomisasi font, ukuran, outline, dan shadow.
+                </p>
+                <div className="flex flex-col gap-2 w-full max-w-[200px]">
+                  <button
+                    onClick={() => useUIStore.getState().openDialog('textGenerator')}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-semibold text-[11px] transition-colors shadow-sm"
+                  >
+                    <Type className="w-3.5 h-3.5" />
+                    <span>Buka Text Generator</span>
+                  </button>
+                  <button
+                    onClick={() => handleAddSampleClip('text')}
+                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
+                  >
+                    <PlusCircle className="w-3 h-3 text-amber-400" />
+                    <span>+ Quick Title Clip</span>
+                  </button>
+                </div>
+              </div>
+            )}
 
-        {activeTab === 'transition' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-purple-950/30 border border-purple-800/30 flex items-center justify-center text-purple-400 mb-3">
-              <Layers className="w-7 h-7" />
+            {/* Phase Roadmap Note */}
+            <div className="p-2.5 rounded-lg bg-[#0e1017] border border-[#1e2330] text-[10px] text-slate-400 mt-auto">
+              <div className="font-semibold text-slate-200 mb-0.5">Phase 4 Engine Aktif</div>
+              <p>Keyframes, Chroma Key, Masking, Tracking, Speed Ramp, Transitions & PiP siap digunakan.</p>
             </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">Transitions</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-2 leading-relaxed">
-              Dissolve, Fade to Black, Whip Pan, Wipe, dan 3D Transitions akan aktif pada Phase 6.
-            </p>
           </div>
-        )}
-
-        {activeTab === 'effects' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-pink-950/30 border border-pink-800/30 flex items-center justify-center text-pink-400 mb-3">
-              <Sparkles className="w-7 h-7" />
-            </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">Video Effects</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-2 leading-relaxed">
-              Blur, Sharpen, Glow, Chroma Key (Green Screen), dan Distortion akan aktif pada Phase 6 & 7.
-            </p>
-          </div>
-        )}
-
-        {activeTab === 'filters' && (
-          <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-            <div className="w-14 h-14 rounded-2xl bg-cyan-950/30 border border-cyan-800/30 flex items-center justify-center text-cyan-400 mb-3">
-              <SlidersHorizontal className="w-7 h-7" />
-            </div>
-            <h3 className="text-xs font-semibold text-slate-200 mb-1">LUTs & Filters</h3>
-            <p className="text-[11px] text-slate-400 max-w-[210px] mb-2 leading-relaxed">
-              Cinematic LUTs, Vintage, Film Noir, dan Color Grading presets akan hadir pada Phase 6.
-            </p>
-          </div>
-        )}
-
-        {/* Phase Roadmap Note */}
-        <div className="p-2.5 rounded-lg bg-[#0e1017] border border-[#1e2330] text-[10px] text-slate-400">
-          <div className="font-semibold text-slate-300 mb-0.5">Phase 2 Media Library</div>
-          <p>Media Library aktif dan siap menerima import video, audio, dan gambar.</p>
-        </div>
-      </div>
-    </>
-  )}
+        </>
+      )}
 </aside>
   );
 };

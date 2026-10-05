@@ -7,7 +7,71 @@
  */
 
 import { create } from 'zustand';
-import { Clip, Project, ProjectSettings, TimelineMarker, Track } from '../types';
+import {
+  AnimatedProperty,
+  ChromaKeySettings,
+  Clip,
+  ClipEffect,
+  ClipMask,
+  MotionTrackingData,
+  PictureInPictureSettings,
+  Project,
+  ProjectSettings,
+  TimelineMarker,
+  TimelineTransition,
+  Track,
+} from '../types';
+
+/**
+ * Migration helper from v1 to v2 schema (Requirement 20).
+ * Preserves all Phase 1-3 media, tracks, settings, and markers safely.
+ */
+export const migrateProject = (raw: any): Project => {
+  if (!raw) return createDefaultProject();
+
+  const project: Project = {
+    projectVersion: 2,
+    id: raw.id || `nvs-proj-${Date.now()}`,
+    name: raw.name || 'Migrated Project',
+    createdAt: raw.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    settings: {
+      name: raw.settings?.name || raw.name || 'Migrated Project',
+      width: raw.settings?.width || 1920,
+      height: raw.settings?.height || 1080,
+      fps: raw.settings?.fps || 30,
+      aspectRatio: raw.settings?.aspectRatio || '16:9',
+      duration: raw.settings?.duration || raw.timeline?.duration || 180,
+      sampleRate: raw.settings?.sampleRate || 48000,
+    },
+    media: Array.isArray(raw.media) ? raw.media : [],
+    timeline: {
+      tracks: Array.isArray(raw.timeline?.tracks)
+        ? raw.timeline.tracks.map((t: Track) => ({
+            ...t,
+            clips: Array.isArray(t.clips)
+              ? t.clips.map((c: Clip) => ({
+                  ...c,
+                  animatedProperties: c.animatedProperties || [],
+                  effects: c.effects || [],
+                  masks: c.masks || [],
+                }))
+              : [],
+          }))
+        : createDefaultTracks(),
+      duration: raw.timeline?.duration || raw.settings?.duration || 180,
+      markers: Array.isArray(raw.timeline?.markers) ? raw.timeline.markers : [],
+      transitions: Array.isArray(raw.timeline?.transitions) ? raw.timeline.transitions : [],
+    },
+    metadata: {
+      appVersion: '0.4.0',
+      appName: 'Nusantara Video Studio',
+      lastSavedBy: raw.metadata?.lastSavedBy || 'NVS Engine',
+    },
+  };
+
+  return project;
+};
 
 export const createDefaultTracks = (): Track[] => [
   {
@@ -137,7 +201,7 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
   const now = new Date().toISOString();
 
   return {
-    projectVersion: 1,
+    projectVersion: 2,
     id,
     name: settings.name,
     createdAt: now,
@@ -148,9 +212,10 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
       tracks: createDefaultTracks(),
       duration: settings.duration,
       markers: [],
+      transitions: [],
     },
     metadata: {
-      appVersion: '0.3.0',
+      appVersion: '0.4.0',
       appName: 'Nusantara Video Studio',
     },
   };
@@ -326,6 +391,19 @@ export const createDemoProject = (): Project => {
   tracks.find((t) => t.id === 'track-a1')!.clips = [audioClip1];
   tracks.find((t) => t.id === 'track-a3')!.clips = [audioClip2];
 
+  // 1 Transition between V1 clips (Requirement 14 & 15)
+  const demoTransition: TimelineTransition = {
+    id: 'tr-demo-1',
+    type: 'cross-dissolve',
+    name: 'Cross Dissolve',
+    fromClipId: videoClip1.id,
+    toClipId: videoClip2.id,
+    trackId: 'track-v1',
+    duration: 1.5,
+    start: 17.25,
+    parameters: {},
+  };
+
   // 1 Marker (Requirement 44)
   const marker: TimelineMarker = {
     id: 'marker-demo-1',
@@ -334,8 +412,45 @@ export const createDemoProject = (): Project => {
     color: '#f59e0b',
   };
 
+  // Add demo effect to videoClip1
+  videoClip1.effects = [
+    {
+      id: 'fx-demo-vignette',
+      type: 'vignette',
+      name: 'Vignette',
+      category: 'stylize',
+      enabled: true,
+      order: 0,
+      parameters: { intensity: 45, radius: 75 },
+    },
+  ];
+
+  // Add demo PiP & Keyframes to imageClip1
+  imageClip1.pip = {
+    enabled: true,
+    presetPosition: 'top-right',
+    presetSize: 'small',
+    borderWidth: 2,
+    borderColor: '#38bdf8',
+    borderRadius: 8,
+    shadowColor: '#000000',
+    shadowBlur: 14,
+  };
+  imageClip1.animatedProperties = [
+    {
+      property: 'opacity',
+      keyframes: [
+        { id: 'kf-img-1', time: 0, value: 0, interpolation: 'ease-out' },
+        { id: 'kf-img-2', time: 1.5, value: 1, interpolation: 'linear' },
+        { id: 'kf-img-3', time: 6.5, value: 1, interpolation: 'ease-in' },
+        { id: 'kf-img-4', time: 8.0, value: 0, interpolation: 'linear' },
+      ],
+    },
+  ];
+
   base.timeline.tracks = tracks;
   base.timeline.markers = [marker];
+  base.timeline.transitions = [demoTransition];
   base.timeline.duration = 60; // 1 min demo timeline
 
   return base;
@@ -353,10 +468,24 @@ interface ProjectState {
   loadProject: (project: Project) => void;
   updateSettings: (settings: Partial<ProjectSettings>) => void;
   setProjectName: (name: string) => void;
+  // Transitions
+  addTransition: (transition: TimelineTransition) => void;
+  removeTransition: (transitionId: string) => void;
+  updateTransition: (transitionId: string, partial: Partial<TimelineTransition>) => void;
+
   updateTracks: (tracks: Track[]) => void;
   addMarker: (time: number, name?: string, color?: string) => void;
   removeMarker: (markerId: string) => void;
   markSaved: () => void;
+
+  // Phase 4 Clip Modifiers
+  updateClipKeyframes: (clipId: string, animatedProperties: AnimatedProperty[]) => void;
+  updateClipEffects: (clipId: string, effects: ClipEffect[]) => void;
+  updateClipMasks: (clipId: string, masks: ClipMask[]) => void;
+  updateClipChromaKey: (clipId: string, chromaKey: Partial<ChromaKeySettings>) => void;
+  updateClipSpeed: (clipId: string, speed: Partial<Clip['speed']>) => void;
+  updateClipPiP: (clipId: string, pip: Partial<PictureInPictureSettings>) => void;
+  updateClipTracking: (clipId: string, tracking: Partial<MotionTrackingData>) => void;
 
   // Undo/Redo
   pushHistorySnapshot: () => void;
@@ -405,8 +534,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   loadProject: (project) => {
+    const migrated = migrateProject(project);
     set({
-      currentProject: project,
+      currentProject: migrated,
       isDirty: false,
       past: [],
       future: [],
@@ -441,7 +571,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }));
   },
 
-  updateTracks: (tracks) => {
+  updateTracks: (tracks: Track[]) => {
     set((state) => ({
       currentProject: {
         ...state.currentProject,
@@ -452,7 +582,151 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }));
   },
 
-  addMarker: (time, name = 'Marker', color = '#38bdf8') => {
+  addTransition: (transition) => {
+    get().pushHistorySnapshot();
+    const current = get().currentProject.timeline.transitions || [];
+    const updated = [...current.filter((t) => t.id !== transition.id), transition].sort(
+      (a, b) => a.start - b.start
+    );
+    set((state) => ({
+      currentProject: {
+        ...state.currentProject,
+        timeline: { ...state.currentProject.timeline, transitions: updated },
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+    }));
+  },
+
+  removeTransition: (transitionId) => {
+    get().pushHistorySnapshot();
+    const current = get().currentProject.timeline.transitions || [];
+    set((state) => ({
+      currentProject: {
+        ...state.currentProject,
+        timeline: {
+          ...state.currentProject.timeline,
+          transitions: current.filter((t) => t.id !== transitionId),
+        },
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+    }));
+  },
+
+  updateTransition: (transitionId, partial) => {
+    get().pushHistorySnapshot();
+    const current = get().currentProject.timeline.transitions || [];
+    const updated = current.map((t) => (t.id === transitionId ? { ...t, ...partial } : t));
+    set((state) => ({
+      currentProject: {
+        ...state.currentProject,
+        timeline: { ...state.currentProject.timeline, transitions: updated },
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+    }));
+  },
+
+  updateClipKeyframes: (clipId, animatedProperties) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => (c.id === clipId ? { ...c, animatedProperties } : c)),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipEffects: (clipId, effects) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => (c.id === clipId ? { ...c, effects } : c)),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipMasks: (clipId, masks) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => (c.id === clipId ? { ...c, masks } : c)),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipChromaKey: (clipId, chromaKey) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.chromaKey || {
+          enabled: false,
+          color: '#00ff00',
+          tolerance: 45,
+          similarity: 40,
+          smoothness: 15,
+          spillSuppression: 50,
+          edgeFeather: 5,
+          opacity: 100,
+        };
+        return { ...c, chromaKey: { ...current, ...chromaKey } };
+      }),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipSpeed: (clipId, speed) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => (c.id === clipId ? { ...c, speed: { ...c.speed, ...speed } } : c)),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipPiP: (clipId, pip) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.pip || {
+          enabled: true,
+          borderWidth: 0,
+          borderColor: '#ffffff',
+          borderRadius: 0,
+          shadowColor: '#000000',
+          shadowBlur: 10,
+        };
+        return { ...c, pip: { ...current, ...pip } };
+      }),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  updateClipTracking: (clipId, tracking) => {
+    get().pushHistorySnapshot();
+    const tracks = get().currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.motionTracking || {
+          id: `trk-${clipId}`,
+          name: 'Tracker 1',
+          status: 'idle',
+          trackingArea: { x: 0.4, y: 0.4, width: 0.2, height: 0.2 },
+          points: [],
+          method: 'centroid',
+        };
+        return { ...c, motionTracking: { ...current, ...tracking } };
+      }),
+    }));
+    get().updateTracks(tracks);
+  },
+
+  addMarker: (time: number, name = 'Marker', color = '#38bdf8') => {
     get().pushHistorySnapshot();
     const currentMarkers = get().currentProject.timeline.markers || [];
     const newMarker: TimelineMarker = {
@@ -471,7 +745,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }));
   },
 
-  removeMarker: (markerId) => {
+  removeMarker: (markerId: string) => {
     get().pushHistorySnapshot();
     const currentMarkers = get().currentProject.timeline.markers || [];
     set((state) => ({

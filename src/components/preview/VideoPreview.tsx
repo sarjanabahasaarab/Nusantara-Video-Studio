@@ -26,11 +26,17 @@ import { useSelectionStore } from '../../stores/selectionStore';
 import { useMediaStore } from '../../stores/mediaStore';
 import { secondsToTimecode } from '../../utils/timecode';
 import { Clip } from '../../types';
+import { KeyframeEngine } from '../../engine/keyframes/KeyframeEngine';
+import { EffectLibrary } from '../../engine/effects/EffectLibrary';
+import { MaskEngine } from '../../engine/masking/MaskEngine';
+import { ChromaKeyEngine } from '../../engine/chromakey/ChromaKeyEngine';
+import { TransitionEngine } from '../../engine/transitions/TransitionEngine';
 
 export const VideoPreview: React.FC = () => {
   const currentProject = useProjectStore((s) => s.currentProject);
   const { fps, aspectRatio, width, height, duration } = currentProject.settings;
   const tracks = currentProject.timeline.tracks;
+  const transitions = currentProject.timeline.transitions || [];
 
   const currentTime = useTimelineStore((s) => s.currentTime);
   const isPlaying = useTimelineStore((s) => s.isPlaying);
@@ -116,17 +122,27 @@ export const VideoPreview: React.FC = () => {
     const activeList: { clip: Clip; mediaUrl?: string }[] = [];
 
     videoTracks.forEach((track) => {
-      const clip = track.clips.find(
-        (c) => currentTime >= c.startTime && currentTime < c.startTime + c.duration
-      );
-      if (clip) {
-        const media = mediaItems.find((m) => m.id === clip.mediaId);
-        activeList.push({ clip, mediaUrl: media?.blobUrl || media?.thumbnail });
-      }
+      track.clips.forEach((clip) => {
+        const isDirect = currentTime >= clip.startTime && currentTime < clip.startTime + clip.duration;
+        // Check if clip is active as part of a transition
+        const isTransitioning = transitions.some(
+          (tr) =>
+            (tr.fromClipId === clip.id || tr.toClipId === clip.id) &&
+            currentTime >= tr.start &&
+            currentTime <= tr.start + tr.duration
+        );
+
+        if (isDirect || isTransitioning) {
+          const media = mediaItems.find((m) => m.id === clip.mediaId);
+          if (!activeList.some((item) => item.clip.id === clip.id)) {
+            activeList.push({ clip, mediaUrl: media?.blobUrl || media?.thumbnail });
+          }
+        }
+      });
     });
 
     return activeList;
-  }, [tracks, currentTime, mediaItems]);
+  }, [tracks, currentTime, mediaItems, transitions]);
 
   const selectedActiveItem = useMemo(() => {
     return activeClipsAtTime.find((item) => item.clip.id === selectedClipId);
@@ -241,7 +257,7 @@ export const VideoPreview: React.FC = () => {
             </div>
           )}
 
-          {/* Composited Video / Image / Text Layers */}
+          {/* Composited Video / Image / Text Layers with Phase 4 Motion Engine */}
           {activeClipsAtTime.map(({ clip, mediaUrl }) => {
             const isSelected = clip.id === selectedClipId;
             const t = clip.transform || {
@@ -268,7 +284,110 @@ export const VideoPreview: React.FC = () => {
               sepia: 0,
             };
 
-            const filterStyle = `brightness(${app.brightness}%) contrast(${app.contrast}%) saturate(${app.saturation}%) blur(${fx.blur}px) grayscale(${fx.grayscale}%) sepia(${fx.sepia}%)`;
+            // 1. Evaluate Keyframes at relative clip time
+            const relTime = Math.max(0, currentTime - clip.startTime);
+            const defaultKfValues: Record<string, number> = {
+              positionX: t.positionX || 0,
+              positionY: t.positionY || 0,
+              scaleX: t.scaleX ?? t.scale ?? 1,
+              scaleY: t.scaleY ?? t.scale ?? 1,
+              rotation: t.rotation || 0,
+              opacity: t.opacity ?? 1,
+              brightness: app.brightness ?? 100,
+              contrast: app.contrast ?? 100,
+              saturation: app.saturation ?? 100,
+              blur: fx.blur ?? 0,
+            };
+            const evalKf = KeyframeEngine.evaluateAllProperties(
+              clip.animatedProperties,
+              relTime,
+              defaultKfValues
+            );
+
+            // 2. Picture-in-Picture (PiP) Settings & Presets
+            let pipTransform = '';
+            let pipBorder = '';
+            let pipRadius = '';
+            let pipShadow = '';
+            let pipCrop = '';
+
+            if (clip.pip?.enabled) {
+              const pip = clip.pip;
+              if (pip.borderWidth) pipBorder = `${pip.borderWidth}px solid ${pip.borderColor || '#38bdf8'}`;
+              if (pip.borderRadius) pipRadius = `${pip.borderRadius}px`;
+              if (pip.shadowBlur) pipShadow = `0 8px ${pip.shadowBlur}px ${pip.shadowColor || 'rgba(0,0,0,0.6)'}`;
+
+              if (pip.presetPosition === 'top-left') {
+                pipTransform = 'translate(-32%, -32%) ';
+              } else if (pip.presetPosition === 'top-right') {
+                pipTransform = 'translate(32%, -32%) ';
+              } else if (pip.presetPosition === 'bottom-left') {
+                pipTransform = 'translate(-32%, 32%) ';
+              } else if (pip.presetPosition === 'bottom-right') {
+                pipTransform = 'translate(32%, 32%) ';
+              } else if (pip.presetPosition === 'center') {
+                pipTransform = 'translate(0%, 0%) ';
+              }
+
+              if (pip.presetSize === 'small') {
+                evalKf.scaleX = (evalKf.scaleX || 1) * 0.4;
+                evalKf.scaleY = (evalKf.scaleY || 1) * 0.4;
+              } else if (pip.presetSize === 'medium') {
+                evalKf.scaleX = (evalKf.scaleX || 1) * 0.55;
+                evalKf.scaleY = (evalKf.scaleY || 1) * 0.55;
+              } else if (pip.presetSize === 'large') {
+                evalKf.scaleX = (evalKf.scaleX || 1) * 0.75;
+                evalKf.scaleY = (evalKf.scaleY || 1) * 0.75;
+              }
+
+              if (pip.cropLeft || pip.cropRight || pip.cropTop || pip.cropBottom) {
+                pipCrop = `inset(${pip.cropTop || 0}% ${pip.cropRight || 0}% ${pip.cropBottom || 0}% ${pip.cropLeft || 0}%)`;
+              }
+            }
+
+            // 3. Effect Stack live compilation
+            const compiledFx = EffectLibrary.compileCssFilter(clip.effects);
+
+            const filterParts = [
+              `brightness(${evalKf.brightness}%)`,
+              `contrast(${evalKf.contrast}%)`,
+              `saturate(${evalKf.saturation}%)`,
+              `blur(${evalKf.blur}px)`,
+              `grayscale(${fx.grayscale}%)`,
+              `sepia(${fx.sepia}%)`,
+              compiledFx.filter,
+            ].filter(Boolean).join(' ');
+
+            // 4. Vector Masking
+            const activeMask = clip.masks?.find((m) => m.enabled);
+            const maskStyle = MaskEngine.computeClipPath(activeMask);
+
+            // 5. Transitions
+            const activeTransition = transitions.find(
+              (tr) =>
+                (tr.fromClipId === clip.id || tr.toClipId === clip.id) &&
+                currentTime >= tr.start &&
+                currentTime <= tr.start + tr.duration
+            );
+
+            let transitionStyle: React.CSSProperties = {};
+            let dipOverlay: { color: string; opacity: number } | null = null;
+
+            if (activeTransition) {
+              const trEval = TransitionEngine.evaluateTransition(activeTransition, currentTime);
+              if (activeTransition.fromClipId === clip.id) {
+                transitionStyle = trEval.fromStyle;
+              } else {
+                transitionStyle = trEval.toStyle;
+              }
+              if (trEval.overlayColor && trEval.overlayOpacity !== undefined) {
+                dipOverlay = { color: trEval.overlayColor, opacity: trEval.overlayOpacity };
+              }
+            }
+
+            const finalTransform = `${pipTransform}translate(${evalKf.positionX}px, ${evalKf.positionY}px) rotate(${evalKf.rotation}deg) scale(${
+              (evalKf.scaleX ?? 1) * (t.flipHorizontal ? -1 : 1)
+            }, ${(evalKf.scaleY ?? 1) * (t.flipVertical ? -1 : 1)})`;
 
             return (
               <div
@@ -278,16 +397,26 @@ export const VideoPreview: React.FC = () => {
                   useSelectionStore.getState().selectClip(clip.id);
                 }}
                 style={{
-                  transform: `translate(${t.positionX}px, ${t.positionY}px) rotate(${t.rotation}deg) scale(${
-                    (t.scaleX ?? t.scale ?? 1) * (t.flipHorizontal ? -1 : 1)
-                  }, ${(t.scaleY ?? t.scale ?? 1) * (t.flipVertical ? -1 : 1)})`,
-                  opacity: t.opacity,
-                  filter: filterStyle,
+                  transform: finalTransform,
+                  opacity: Math.max(0, Math.min(1, (evalKf.opacity ?? 1) * ((transitionStyle.opacity as number) ?? 1))),
+                  filter: filterParts,
+                  clipPath: maskStyle.clipPath || pipCrop || (transitionStyle.clipPath as string) || undefined,
+                  ...compiledFx.style,
+                  ...transitionStyle,
                 }}
                 className={`absolute transition-transform duration-75 max-w-full max-h-full flex items-center justify-center cursor-pointer ${
                   isSelected ? 'z-40' : 'z-20'
                 }`}
               >
+                {/* Visual Content Container with PiP styling & Chroma Key */}
+                <div
+                  style={{
+                    border: pipBorder || undefined,
+                    borderRadius: pipRadius || undefined,
+                    boxShadow: pipShadow || undefined,
+                  }}
+                  className="relative overflow-hidden"
+                >
                 {/* Visual Content: Video / Image / Text */}
                 {clip.type === 'text' && clip.textProps ? (
                   <div
@@ -342,6 +471,7 @@ export const VideoPreview: React.FC = () => {
                     )}
                   </div>
                 )}
+                </div>
 
                 {/* Direct Editing Bounding Box & Handles (Requirement 16) */}
                 {isSelected && (
@@ -371,6 +501,26 @@ export const VideoPreview: React.FC = () => {
                 )}
               </div>
             );
+          })}
+
+          {/* Active Transition Dip Overlay (Dip to Black / Dip to White) */}
+          {transitions.map((tr) => {
+            if (currentTime >= tr.start && currentTime <= tr.start + tr.duration) {
+              const trEval = TransitionEngine.evaluateTransition(tr, currentTime);
+              if (trEval.overlayColor && trEval.overlayOpacity !== undefined && trEval.overlayOpacity > 0) {
+                return (
+                  <div
+                    key={`dip-${tr.id}`}
+                    style={{
+                      backgroundColor: trEval.overlayColor,
+                      opacity: trEval.overlayOpacity,
+                    }}
+                    className="absolute inset-0 pointer-events-none z-50 transition-opacity duration-75"
+                  />
+                );
+              }
+            }
+            return null;
           })}
 
           {/* Project Framing Badge */}

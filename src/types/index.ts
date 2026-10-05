@@ -151,9 +151,195 @@ export interface ClipTextProperties {
   textPreset?: 'title' | 'subtitle' | 'caption' | 'lower-third';
 }
 
+export type KeyframeInterpolation = 'linear' | 'hold' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+export interface Keyframe {
+  id: string;
+  time: number; // in seconds relative to clip start
+  value: number;
+  interpolation: KeyframeInterpolation;
+}
+
+export interface AnimatedProperty {
+  property: string; // e.g. 'positionX' | 'positionY' | 'scaleX' | 'scaleY' | 'rotation' | 'opacity' | 'volume' | 'blur' | 'brightness' | 'contrast' | 'saturation'
+  keyframes: Keyframe[];
+}
+
+export type AnimationPresetType =
+  | 'fade-in'
+  | 'slide-in-left'
+  | 'slide-in-right'
+  | 'slide-in-up'
+  | 'slide-in-down'
+  | 'zoom-in'
+  | 'pop-in'
+  | 'fade-out'
+  | 'slide-out-left'
+  | 'slide-out-right'
+  | 'slide-out-up'
+  | 'slide-out-down'
+  | 'zoom-out'
+  | 'slow-zoom'
+  | 'pan-left'
+  | 'pan-right'
+  | 'pan-up'
+  | 'pan-down'
+  | 'rotate'
+  | 'ken-burns';
+
+export interface AppliedAnimationPreset {
+  id: string;
+  type: AnimationPresetType;
+  category: 'entrance' | 'exit' | 'motion';
+  duration: number; // in seconds
+  appliedAt: number;
+}
+
+export interface ChromaKeySettings {
+  enabled: boolean;
+  color: string; // e.g. '#00ff00'
+  tolerance: number; // 0 to 100
+  similarity: number; // 0 to 100
+  smoothness: number; // 0 to 100
+  spillSuppression: number; // 0 to 100
+  edgeFeather: number; // 0 to 100
+  opacity: number; // 0 to 100
+  preset?: 'green' | 'blue' | 'custom';
+}
+
+export type MaskShapeType = 'rectangle' | 'ellipse' | 'linear' | 'polygon';
+
+export interface MaskPoint {
+  x: number; // 0 to 100%
+  y: number;
+}
+
+export interface ClipMask {
+  id: string;
+  name: string;
+  enabled: boolean;
+  type: MaskShapeType;
+  inverted: boolean;
+  feather: number; // in px
+  expand: number; // in % (-50 to 50)
+  opacity: number; // 0 to 1
+  positionX: number; // offset
+  positionY: number;
+  scale: number; // 0.1 to 3
+  rotation: number; // in deg
+  points?: MaskPoint[]; // polygon points
+}
+
+export interface TrackingPoint {
+  time: number; // relative to clip
+  x: number; // normalized 0 to 1
+  y: number;
+  width?: number;
+  height?: number;
+  confidence: number;
+}
+
+export interface MotionTrackingData {
+  id: string;
+  name: string;
+  status: 'idle' | 'tracking' | 'completed' | 'failed';
+  trackingArea: { x: number; y: number; width: number; height: number }; // normalized 0 to 1
+  targetObjectId?: string; // Clip ID or text layer ID to attach to
+  points: TrackingPoint[];
+  method: 'optical-flow' | 'centroid' | 'native-backend';
+}
+
+export type SpeedInterpolation = 'linear' | 'ease-in' | 'ease-out' | 'ease-in-out';
+
+export interface SpeedPoint {
+  id: string;
+  time: number; // in seconds inside source clip
+  speed: number; // 0.1x to 16x
+  interpolation: SpeedInterpolation;
+}
+
+export interface SpeedRampCurve {
+  enabled: boolean;
+  preset?: 'slow-motion' | 'fast-motion' | 'speed-up' | 'speed-down' | 'montage' | 'custom';
+  points: SpeedPoint[];
+}
+
+export interface PictureInPictureSettings {
+  enabled: boolean;
+  presetPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'custom';
+  presetSize?: 'small' | 'medium' | 'large' | 'custom';
+  borderWidth: number; // in px
+  borderColor: string;
+  borderRadius: number; // in px
+  shadowColor: string;
+  shadowBlur: number;
+  cropLeft?: number;
+  cropRight?: number;
+  cropTop?: number;
+  cropBottom?: number;
+}
+
+export type TransitionType =
+  | 'cross-dissolve'
+  | 'fade'
+  | 'dip-to-black'
+  | 'dip-to-white'
+  | 'wipe-left'
+  | 'wipe-right'
+  | 'wipe-up'
+  | 'wipe-down'
+  | 'zoom'
+  | 'push'
+  | 'slide';
+
+export interface TimelineTransition {
+  id: string;
+  type: TransitionType;
+  name: string;
+  fromClipId: string;
+  toClipId: string;
+  trackId: string;
+  duration: number; // in seconds
+  start: number; // timeline start time
+  parameters: Record<string, number | string | boolean>;
+}
+
+export interface ClipEffect {
+  id: string;
+  type: string;
+  name: string;
+  category: 'color' | 'blur' | 'stylize' | 'distortion' | 'transform';
+  enabled: boolean;
+  order: number;
+  parameters: Record<string, number | string | boolean>;
+}
+
+export interface RenderEffect {
+  type: string;
+  parameters: Record<string, unknown>;
+}
+
+export interface RenderClip {
+  clipId: string;
+  sourcePath: string;
+  timelineStart: number;
+  duration: number;
+  sourceStart: number;
+  speed: number;
+  effects: RenderEffect[];
+  keyframes: AnimatedProperty[];
+}
+
+export interface RenderJobProgress {
+  stage: string;
+  percentage: number;
+  currentTime: number;
+  totalTime: number;
+}
+
 /**
- * Standard Clip definition compatible with Phase 1 & 2
- * while offering full Phase 3 TimelineClip capabilities.
+ * Standard Clip definition compatible with Phase 1 & 2 & 3
+ * while offering full Phase 4 Advanced Effects & Motion capabilities.
  */
 export interface BaseClip {
   id: string;
@@ -170,10 +356,19 @@ export interface BaseClip {
   appearance?: ClipAppearance;
   basicEffects?: ClipBasicEffects;
   audio?: ClipAudio;
-  speed: ClipSpeed;
+  speed: ClipSpeed & { maintainPitch?: boolean; ramp?: SpeedRampCurve };
   visible?: boolean;
   selected?: boolean;
   textProps?: ClipTextProperties;
+
+  // Phase 4 Advanced Engines
+  animatedProperties?: AnimatedProperty[];
+  animationPresets?: AppliedAnimationPreset[];
+  chromaKey?: ChromaKeySettings;
+  masks?: ClipMask[];
+  motionTracking?: MotionTrackingData;
+  pip?: PictureInPictureSettings;
+  effects?: ClipEffect[];
 
   // Phase 3 convenience aliases
   start?: number;
@@ -232,12 +427,13 @@ export interface TimelineData {
   scrollLeft: number;
   tracks: Track[];
   markers?: TimelineMarker[];
+  transitions?: TimelineTransition[];
   snapping: boolean;
   loop: boolean;
 }
 
 export interface Project {
-  projectVersion: 1;
+  projectVersion: 1 | 2;
   id: string;
   name: string;
   createdAt: string;
@@ -248,6 +444,7 @@ export interface Project {
     tracks: Track[];
     duration: number;
     markers?: TimelineMarker[];
+    transitions?: TimelineTransition[];
   };
   metadata: {
     appVersion: string;

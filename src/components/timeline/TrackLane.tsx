@@ -7,13 +7,15 @@
  */
 
 import React, { useRef, useState } from 'react';
-import { Track, Clip, MediaItem } from '../../types';
+import { Track, Clip, MediaItem, TimelineTransition } from '../../types';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useProjectStore } from '../../stores/projectStore';
 import { useMediaStore } from '../../stores/mediaStore';
 import { useUIStore } from '../../stores/uiStore';
-import { Film, Music, Type, Monitor, Camera, Mic, Image as ImageIcon } from 'lucide-react';
+import { Film, Music, Type, Monitor, Camera, Mic, Image as ImageIcon, Diamond, Layers, Plus, X } from 'lucide-react';
+import { TransitionEngine } from '../../engine/transitions/TransitionEngine';
+import { KeyframeEngine } from '../../engine/keyframes/KeyframeEngine';
 
 interface TrackLaneProps {
   track: Track;
@@ -23,6 +25,7 @@ interface TrackLaneProps {
 
 export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipContextMenu }) => {
   const zoom = useTimelineStore((s) => s.zoom);
+  const currentTime = useTimelineStore((s) => s.currentTime);
   const moveClip = useTimelineStore((s) => s.moveClip);
   const trimClipLeft = useTimelineStore((s) => s.trimClipLeft);
   const trimClipRight = useTimelineStore((s) => s.trimClipRight);
@@ -36,6 +39,14 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
   const toggleClipSelection = useSelectionStore((s) => s.toggleClipSelection);
   const activeTool = useSelectionStore((s) => s.activeTool);
   const notify = useUIStore((s) => s.notify);
+
+  const transitions = useProjectStore((s) => s.currentProject.timeline.transitions || []);
+  const addTransition = useProjectStore((s) => s.addTransition);
+  const removeTransition = useProjectStore((s) => s.removeTransition);
+  const updateTransition = useProjectStore((s) => s.updateTransition);
+  const updateClipKeyframes = useProjectStore((s) => s.updateClipKeyframes);
+
+  const [selectedTransitionId, setSelectedTransitionId] = useState<string | null>(null);
 
   const laneRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -64,8 +75,38 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
     const rawDropTime = Math.max(0, dropX / zoom);
     const dropTime = getSnappedTime(rawDropTime);
 
+    // Check if dropping a Transition preset
+    const rawData = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+    if (rawData) {
+      try {
+        const parsed = JSON.parse(rawData);
+        if (parsed?.type === 'transition' && parsed?.transitionType) {
+          const sortedClips = [...track.clips].sort((a, b) => a.startTime - b.startTime);
+          for (let i = 0; i < sortedClips.length - 1; i++) {
+            const c1 = sortedClips[i];
+            const c2 = sortedClips[i + 1];
+            const cutPoint = c1.startTime + c1.duration;
+            if (Math.abs(dropTime - cutPoint) < 4.0) {
+              const tr = TransitionEngine.createTransition(parsed.transitionType, c1, c2);
+              if (tr) {
+                addTransition(tr);
+                notify('Transition Dipasang', `Transisi "${tr.name}" berhasil dipasang di antara dua clip.`, 'success');
+              } else {
+                notify('Gagal Memasang', 'Durasi clip tidak mencukupi untuk handle transisi.', 'warning');
+              }
+              return;
+            }
+          }
+          notify('Transition', 'Jatuhkan transisi pada batas sambungan antara dua clip berturutan.', 'info');
+          return;
+        }
+      } catch {
+        // Not a transition JSON, continue media ingestion
+      }
+    }
+
     // Read dropped media ID or data
-    const mediaId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('application/json');
+    const mediaId = rawData;
     const mediaItems = useMediaStore.getState().items;
     let targetMedia: MediaItem | undefined;
 
@@ -218,6 +259,121 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
     window.addEventListener('pointerup', handlePointerUp);
   };
 
+  // Drag a Keyframe Diamond Horizontally on the Clip (Requirement 6)
+  const handleKeyframePointerDown = (
+    e: React.PointerEvent,
+    clip: Clip,
+    propName: string,
+    kfId: string,
+    initialTime: number
+  ) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const startX = e.clientX;
+    const clipDuration = clip.duration;
+
+    const onPointerMove = (me: PointerEvent) => {
+      const deltaSec = (me.clientX - startX) / zoom;
+      const newTime = Math.max(0, Math.min(clipDuration, initialTime + deltaSec));
+
+      const existingProps = clip.animatedProperties || [];
+      const updated = existingProps.map((p) => {
+        if (p.property !== propName) return p;
+        return {
+          ...p,
+          keyframes: p.keyframes
+            .map((k) => (k.id === kfId ? { ...k, time: parseFloat(newTime.toFixed(2)) } : k))
+            .sort((a, b) => a.time - b.time),
+        };
+      });
+      updateClipKeyframes(clip.id, updated);
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const handleAddKeyframeAtPlayhead = (clip: Clip) => {
+    const relTime = Math.max(0, Math.min(clip.duration, currentTime - clip.startTime));
+    const existing = clip.animatedProperties || [];
+    const opacityProp = existing.find((p) => p.property === 'opacity') || {
+      property: 'opacity',
+      keyframes: [],
+    };
+    const updatedProp = KeyframeEngine.addKeyframe(
+      opacityProp,
+      relTime,
+      clip.transform.opacity ?? 1,
+      'linear'
+    );
+    const otherProps = existing.filter((p) => p.property !== 'opacity');
+    updateClipKeyframes(clip.id, [...otherProps, updatedProp]);
+    notify('Keyframe Ditambahkan', `Keyframe ditambahkan pada playhead (${relTime.toFixed(2)}s).`, 'success', 2000);
+  };
+
+  const handleDeleteKeyframe = (clip: Clip, propName: string, kfId: string) => {
+    const existing = clip.animatedProperties || [];
+    const updated = existing.map((p) => {
+      if (p.property !== propName) return p;
+      return { ...p, keyframes: p.keyframes.filter((k) => k.id !== kfId) };
+    });
+    updateClipKeyframes(clip.id, updated);
+    notify('Keyframe Dihapus', `Keyframe ${propName} dihapus.`, 'info', 1500);
+  };
+
+  // Transition Resize Handlers (Requirement 14)
+  const handleTransitionTrimRight = (e: React.PointerEvent, tr: TimelineTransition) => {
+    e.stopPropagation();
+    const startX = e.clientX;
+    const initialDuration = tr.duration;
+
+    const onPointerMove = (me: PointerEvent) => {
+      const deltaSec = (me.clientX - startX) / zoom;
+      const newDuration = Math.max(0.2, Math.min(6.0, initialDuration + deltaSec));
+      updateTransition(tr.id, { duration: parseFloat(newDuration.toFixed(2)) });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const handleTransitionTrimLeft = (e: React.PointerEvent, tr: TimelineTransition) => {
+    e.stopPropagation();
+    const startX = e.clientX;
+    const initialStart = tr.start;
+    const initialDuration = tr.duration;
+
+    const onPointerMove = (me: PointerEvent) => {
+      const deltaSec = (me.clientX - startX) / zoom;
+      const newStart = initialStart + deltaSec;
+      const newDuration = Math.max(0.2, initialDuration - deltaSec);
+      updateTransition(tr.id, {
+        start: parseFloat(newStart.toFixed(2)),
+        duration: parseFloat(newDuration.toFixed(2)),
+      });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const trackTransitions = transitions.filter((tr) => tr.trackId === track.id);
+
   return (
     <div
       ref={laneRef}
@@ -323,6 +479,55 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
               </div>
             )}
 
+            {/* Keyframe Mini-Lane on selected clip (Requirement 6) */}
+            {isSelected && (
+              <div
+                className="h-4 bg-black/70 border-t border-amber-500/40 px-1.5 flex items-center justify-between relative cursor-default shrink-0 z-20"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center gap-1 shrink-0">
+                  <Diamond className="w-2.5 h-2.5 text-amber-400 fill-amber-400" />
+                  <span className="text-[8px] font-mono text-amber-300 font-medium hidden sm:inline">
+                    KF ({clip.animatedProperties?.reduce((acc, p) => acc + p.keyframes.length, 0) || 0})
+                  </span>
+                </div>
+
+                <div className="flex-1 mx-2 h-full relative">
+                  {clip.animatedProperties?.flatMap((prop) =>
+                    prop.keyframes.map((kf) => {
+                      const leftPercent = Math.min(100, Math.max(0, (kf.time / clip.duration) * 100));
+                      return (
+                        <div
+                          key={`${prop.property}-${kf.id}`}
+                          onPointerDown={(e) => handleKeyframePointerDown(e, clip, prop.property, kf.id, kf.time)}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteKeyframe(clip, prop.property, kf.id);
+                          }}
+                          style={{ left: `${leftPercent}%` }}
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-2 h-2 rotate-45 bg-amber-400 border border-slate-900 shadow hover:scale-150 cursor-pointer z-30 transition-transform"
+                          title={`${prop.property}: ${kf.time.toFixed(2)}s = ${kf.value} (Klik kanan untuk hapus)`}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddKeyframeAtPlayhead(clip);
+                  }}
+                  className="p-0.5 rounded bg-amber-950/80 hover:bg-amber-700 text-amber-300 hover:text-white border border-amber-600/40 text-[8px] flex items-center gap-0.5"
+                  title="Tambah Keyframe pada Playhead"
+                >
+                  <Plus className="w-2 h-2" />
+                  <span>+KF</span>
+                </button>
+              </div>
+            )}
+
             {/* Trim Left Interactive Handle (Requirement 11) */}
             <div
               onPointerDown={(e) => handleTrimLeftDown(e, clip)}
@@ -340,6 +545,61 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
             >
               <div className="w-0.5 h-4 bg-white/70 rounded-full" />
             </div>
+          </div>
+        );
+      })}
+
+      {/* Transitions on this track (Requirement 14 & 15) */}
+      {trackTransitions.map((tr) => {
+        const trLeft = tr.start * zoom;
+        const trWidth = Math.max(24, tr.duration * zoom);
+        const isEditingThisTr = selectedTransitionId === tr.id;
+
+        return (
+          <div
+            key={tr.id}
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTransitionId(isEditingThisTr ? null : tr.id);
+            }}
+            style={{
+              left: `${trLeft}px`,
+              width: `${trWidth}px`,
+            }}
+            className="absolute top-1 bottom-1 bg-gradient-to-r from-purple-800/90 via-indigo-700/90 to-purple-800/90 border border-purple-400/90 rounded-md shadow-xl flex items-center justify-between px-1.5 cursor-pointer z-25 text-white select-none hover:brightness-110"
+            title={`Transition: ${tr.name} (${tr.duration.toFixed(1)}s)`}
+          >
+            <div
+              onPointerDown={(e) => handleTransitionTrimLeft(e, tr)}
+              className="w-1.5 h-full bg-white/20 hover:bg-white cursor-ew-resize rounded-xs"
+              title="Drag untuk mengubah durasi transisi"
+            />
+
+            <div className="flex items-center gap-1 mx-1 truncate pointer-events-none">
+              <Layers className="w-3 h-3 text-purple-200 shrink-0" />
+              <span className="text-[9px] font-semibold truncate">{tr.name}</span>
+              <span className="text-[8px] font-mono text-purple-200 opacity-80">
+                {tr.duration.toFixed(1)}s
+              </span>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                removeTransition(tr.id);
+                notify('Transition Dihapus', `Transisi "${tr.name}" dihapus.`, 'info');
+              }}
+              className="p-0.5 rounded text-white/60 hover:text-white hover:bg-black/40"
+              title="Hapus Transition"
+            >
+              <X className="w-2.5 h-2.5" />
+            </button>
+
+            <div
+              onPointerDown={(e) => handleTransitionTrimRight(e, tr)}
+              className="w-1.5 h-full bg-white/20 hover:bg-white cursor-ew-resize rounded-xs"
+              title="Drag untuk mengubah durasi transisi"
+            />
           </div>
         );
       })}

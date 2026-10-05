@@ -51,8 +51,8 @@ export default function App() {
   useEffect(() => {
     databaseService.initialize().then(() => {
       notify(
-        'Nusantara Video Studio v0.3.0',
-        'Phase 3: Professional Timeline & Capture Engine aktif. Siap merekam layar, kamera, suara, dan editing multi-track.',
+        'Nusantara Video Studio v0.4.0',
+        'Phase 4: Advanced Effects & Motion Engine aktif. Keyframes, Chroma Key, Masking, Tracking, Speed Ramp, Transitions & PiP siap digunakan.',
         'info',
         4000
       );
