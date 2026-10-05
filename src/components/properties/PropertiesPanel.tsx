@@ -44,6 +44,11 @@ import { PictureInPicturePanel } from '../pip/PictureInPicturePanel';
 import { MotionTrackingPanel } from '../tracking/MotionTrackingPanel';
 import { Clip } from '../../types';
 
+// Phase 5 Modular Panels
+import { TextPropertiesPanel } from './TextPropertiesPanel';
+import { ShapePropertiesPanel } from './ShapePropertiesPanel';
+import { LogoPropertiesPanel } from './LogoPropertiesPanel';
+
 export type PropertiesTab =
   | 'transform'
   | 'effects'
@@ -56,7 +61,9 @@ export type PropertiesTab =
   | 'tracking'
   | 'appearance'
   | 'audio'
-  | 'text';
+  | 'text'
+  | 'shape'
+  | 'logo';
 
 export const PropertiesPanel: React.FC = () => {
   const selectedClipId = useSelectionStore((s) => s.selectedClipId);
@@ -112,6 +119,8 @@ export const PropertiesPanel: React.FC = () => {
     selectedClip && (selectedClip.type === 'audio' || selectedClip.type === 'voice-recording');
 
   const isText = selectedClip && selectedClip.type === 'text';
+  const isShape = selectedClip && selectedClip.type === 'shape';
+  const isLogo = selectedClip && selectedClip.type === 'logo';
 
   const transform = selectedClip?.transform || {
     positionX: 0,
@@ -383,6 +392,48 @@ export const PropertiesPanel: React.FC = () => {
                 }`}
               >
                 Keyframes
+              </button>
+            </>
+          )}
+
+          {isShape && (
+            <>
+              <button
+                onClick={() => setActiveTab('shape')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'shape' ? 'bg-cyan-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Shape Properties
+              </button>
+              <button
+                onClick={() => setActiveTab('transform')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'transform' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Transform
+              </button>
+            </>
+          )}
+
+          {isLogo && (
+            <>
+              <button
+                onClick={() => setActiveTab('logo')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'logo' ? 'bg-purple-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Logo Overlay
+              </button>
+              <button
+                onClick={() => setActiveTab('transform')}
+                className={`px-2.5 py-1 rounded-md font-medium shrink-0 transition-colors ${
+                  activeTab === 'transform' ? 'bg-blue-600 text-white font-semibold' : 'text-slate-400'
+                }`}
+              >
+                Transform
               </button>
             </>
           )}
@@ -772,58 +823,19 @@ export const PropertiesPanel: React.FC = () => {
               </div>
             )}
 
-            {/* 12. Text Styling Tab */}
+            {/* 12. Text Styling Tab (Phase 5 Professional Text Studio) */}
             {activeTab === 'text' && (
-              <div className="flex flex-col gap-3">
-                <span className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
-                  <Type className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Text Content & Style</span>
-                </span>
+              <TextPropertiesPanel clip={selectedClip!} onNotify={notify} />
+            )}
 
-                <textarea
-                  rows={2}
-                  value={textProps.text}
-                  onChange={(e) => updateClipText(selectedClip!.id, { text: e.target.value })}
-                  className="w-full bg-[#0a0c10] border border-[#242b3b] rounded p-2 text-slate-200 text-xs focus:outline-none focus:border-blue-500"
-                />
+            {/* 13. Shape Graphics Tab (Phase 5 Shape Studio) */}
+            {activeTab === 'shape' && (
+              <ShapePropertiesPanel clip={selectedClip!} onNotify={notify} />
+            )}
 
-                <SliderInput
-                  label="Font Size"
-                  value={textProps.fontSize}
-                  min={12}
-                  max={96}
-                  unit="px"
-                  onChange={(v) => updateClipText(selectedClip!.id, { fontSize: v })}
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <label className="flex items-center justify-between bg-[#11141c] border border-[#202532] p-2 rounded cursor-pointer">
-                    <span className="text-slate-400 text-[10px]">Warna Teks:</span>
-                    <input
-                      type="color"
-                      value={textProps.color}
-                      onChange={(e) => updateClipText(selectedClip!.id, { color: e.target.value })}
-                      className="w-6 h-6 rounded cursor-pointer border border-white/20 bg-transparent"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between bg-[#11141c] border border-[#202532] p-2 rounded cursor-pointer">
-                    <span className="text-slate-400 text-[10px]">Background:</span>
-                    <input
-                      type="color"
-                      value={
-                        textProps.backgroundColor && textProps.backgroundColor.startsWith('#')
-                          ? textProps.backgroundColor
-                          : '#000000'
-                      }
-                      onChange={(e) =>
-                        updateClipText(selectedClip!.id, { backgroundColor: e.target.value })
-                      }
-                      className="w-6 h-6 rounded cursor-pointer border border-white/20 bg-transparent"
-                    />
-                  </label>
-                </div>
-              </div>
+            {/* 14. Logo Overlay Tab (Phase 5 Watermark Studio) */}
+            {activeTab === 'logo' && (
+              <LogoPropertiesPanel clip={selectedClip!} onNotify={notify} />
             )}
           </>
         )}

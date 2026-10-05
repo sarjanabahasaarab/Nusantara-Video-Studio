@@ -40,7 +40,7 @@ export const TitleBar: React.FC = () => {
           Nusantara Video Studio
         </span>
         <span className="text-[9px] font-mono text-blue-400 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">
-          v0.4.0
+          v0.5.0
         </span>
       </div>
 

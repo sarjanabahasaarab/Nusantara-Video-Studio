@@ -16,6 +16,9 @@ export type ActiveDialog =
   | 'mediaTest'
   | 'textGenerator'
   | 'phase4Test'
+  | 'phase5Test'
+  | 'subtitleEditor'
+  | 'subtitleStudio'
   | null;
 
 interface UIState {

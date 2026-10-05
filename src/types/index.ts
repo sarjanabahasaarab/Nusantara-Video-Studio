@@ -9,13 +9,15 @@
 export type ResolutionPreset = '1280x720' | '1920x1080' | '2560x1440' | '3840x2160';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
 export type FrameRate = 24 | 25 | 30 | 50 | 60;
-export type TrackType = 'video' | 'audio';
+export type TrackType = 'video' | 'audio' | 'subtitle';
 
 export type ClipType =
   | 'video'
   | 'audio'
   | 'image'
   | 'text'
+  | 'shape'
+  | 'logo'
   | 'screen-recording'
   | 'camera-recording'
   | 'voice-recording';
@@ -133,22 +135,142 @@ export interface ClipSpeed {
   reverse: boolean;
 }
 
+export interface TextAnimationSettings {
+  preset:
+    | 'none'
+    | 'fade-in'
+    | 'slide-in'
+    | 'zoom-in'
+    | 'typewriter'
+    | 'pop-in'
+    | 'fade-out'
+    | 'slide-out'
+    | 'zoom-out'
+    | 'floating'
+    | 'pulse'
+    | 'gentle-zoom';
+  duration: number; // in seconds
+  delay?: number; // delay in seconds
+  direction?: 'left' | 'right' | 'top' | 'bottom';
+  intensity?: number; // 0 to 100
+}
+
 export interface ClipTextProperties {
   text: string;
   fontFamily: string;
   fontSize: number;
+  fontWeight?: string | number;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
+  letterSpacing?: number;
+  lineHeight?: number;
+  textDirection?: 'ltr' | 'rtl';
+  alignment: 'left' | 'center' | 'right' | 'justify';
   color: string;
   backgroundColor?: string;
-  alignment: 'left' | 'center' | 'right';
-  lineSpacing?: number;
-  letterSpacing?: number;
+  backgroundOpacity?: number; // 0 to 1
   outlineColor?: string;
   outlineWidth?: number;
   shadowColor?: string;
   shadowBlur?: number;
-  textPreset?: 'title' | 'subtitle' | 'caption' | 'lower-third';
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+  boxWidth?: number; // in px
+  boxHeight?: number; // in px
+  padding?: number; // in px
+  margin?: number; // in px
+  textPreset?: string;
+  animation?: TextAnimationSettings;
+}
+
+export type ShapeType =
+  | 'rectangle'
+  | 'rounded-rectangle'
+  | 'circle'
+  | 'ellipse'
+  | 'line'
+  | 'arrow'
+  | 'triangle';
+
+export interface ShapeProperties {
+  shapeType: ShapeType;
+  fillColor: string;
+  strokeColor: string;
+  strokeWidth: number;
+  opacity: number; // 0 to 1
+  width: number;
+  height: number;
+  cornerRadius?: number;
+  arrowDirection?: 'left' | 'right' | 'up' | 'down';
+}
+
+export interface LogoOverlayProperties {
+  mediaId?: string;
+  logoUrl?: string;
+  presetPosition?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center' | 'custom';
+  scale: number;
+  rotation: number;
+  opacity: number; // 0 to 1
+  cropLeft?: number;
+  cropRight?: number;
+  cropTop?: number;
+  cropBottom?: number;
+  borderWidth?: number;
+  borderColor?: string;
+  shadowBlur?: number;
+  shadowColor?: string;
+}
+
+export type GraphicLayerType =
+  | 'text'
+  | 'shape'
+  | 'image'
+  | 'logo'
+  | 'subtitle'
+  | 'caption';
+
+export interface GraphicLayer {
+  id: string;
+  type: GraphicLayerType;
+  name: string;
+  start: number;
+  duration: number;
+  position: { x: number; y: number };
+  scale: { x: number; y: number };
+  rotation: number;
+  opacity: number;
+  visible: boolean;
+  locked: boolean;
+  zIndex: number;
+  properties: Record<string, any>;
+}
+
+export interface SubtitleItem {
+  id: string;
+  index: number;
+  startTime: number; // in seconds
+  endTime: number; // in seconds
+  text: string;
+  style?: Partial<ClipTextProperties>;
+}
+
+export interface SubtitleTrack {
+  id: string;
+  name: string;
+  language: string;
+  visible: boolean;
+  locked: boolean;
+  items: SubtitleItem[];
+  defaultStyle?: Partial<ClipTextProperties>;
+}
+
+export interface SafeAreaSettings {
+  showSafeArea: boolean;
+  showTitleSafe: boolean; // 80% boundary
+  showActionSafe: boolean; // 90% boundary
+  showCenterGuide: boolean; // crosshair
+  showGrid: boolean; // 3x3 rule of thirds
 }
 
 export type KeyframeInterpolation = 'linear' | 'hold' | 'ease-in' | 'ease-out' | 'ease-in-out';
@@ -370,6 +492,12 @@ export interface BaseClip {
   pip?: PictureInPictureSettings;
   effects?: ClipEffect[];
 
+  // Phase 5 Professional Text, Subtitle & Graphics Studio
+  shapeProps?: ShapeProperties;
+  logoProps?: LogoOverlayProperties;
+  graphicLayers?: GraphicLayer[];
+  subtitleItem?: SubtitleItem;
+
   // Phase 3 convenience aliases
   start?: number;
   sourceStart?: number;
@@ -400,6 +528,16 @@ export interface TextClip extends BaseClip {
   alignment: 'left' | 'center' | 'right';
 }
 
+export interface ShapeClip extends BaseClip {
+  type: 'shape';
+  shapeProps: ShapeProperties;
+}
+
+export interface LogoClip extends BaseClip {
+  type: 'logo';
+  logoProps: LogoOverlayProperties;
+}
+
 export type Clip = BaseClip;
 
 export interface Track {
@@ -428,12 +566,13 @@ export interface TimelineData {
   tracks: Track[];
   markers?: TimelineMarker[];
   transitions?: TimelineTransition[];
+  subtitleTracks?: SubtitleTrack[];
   snapping: boolean;
   loop: boolean;
 }
 
 export interface Project {
-  projectVersion: 1 | 2;
+  projectVersion: 1 | 2 | 3;
   id: string;
   name: string;
   createdAt: string;
@@ -445,6 +584,8 @@ export interface Project {
     duration: number;
     markers?: TimelineMarker[];
     transitions?: TimelineTransition[];
+    subtitleTracks?: SubtitleTrack[];
+    safeArea?: SafeAreaSettings;
   };
   metadata: {
     appVersion: string;

@@ -24,6 +24,7 @@ import { Clip } from '../../types';
 import { MediaLibrary } from './MediaLibrary';
 import { TransitionsSidebar } from './TransitionsSidebar';
 import { EffectsSidebar } from './EffectsSidebar';
+import { TextStudioSidebar } from './TextStudioSidebar';
 
 export const Sidebar: React.FC = () => {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -184,6 +185,8 @@ export const Sidebar: React.FC = () => {
       {/* Main Tab Renderers */}
       {activeTab === 'media' ? (
         <MediaLibrary />
+      ) : activeTab === 'text' ? (
+        <TextStudioSidebar />
       ) : activeTab === 'transition' ? (
         <TransitionsSidebar />
       ) : activeTab === 'effects' || activeTab === 'filters' ? (
@@ -223,38 +226,10 @@ export const Sidebar: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'text' && (
-              <div className="flex flex-col items-center justify-center text-center my-auto py-6">
-                <div className="w-14 h-14 rounded-2xl bg-amber-950/30 border border-amber-800/30 flex items-center justify-center text-amber-400 mb-3">
-                  <Type className="w-7 h-7" />
-                </div>
-                <h3 className="text-xs font-semibold text-slate-200 mb-1">Text & Subtitle Studio</h3>
-                <p className="text-[11px] text-slate-400 max-w-[210px] mb-4 leading-relaxed">
-                  Buat Judul, Subtitle, Caption, atau Lower Third dengan kustomisasi font, ukuran, outline, dan shadow.
-                </p>
-                <div className="flex flex-col gap-2 w-full max-w-[200px]">
-                  <button
-                    onClick={() => useUIStore.getState().openDialog('textGenerator')}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-semibold text-[11px] transition-colors shadow-sm"
-                  >
-                    <Type className="w-3.5 h-3.5" />
-                    <span>Buka Text Generator</span>
-                  </button>
-                  <button
-                    onClick={() => handleAddSampleClip('text')}
-                    className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c2230] hover:bg-[#252d3f] border border-[#2b3447] text-slate-300 text-[11px] transition-colors"
-                  >
-                    <PlusCircle className="w-3 h-3 text-amber-400" />
-                    <span>+ Quick Title Clip</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Phase Roadmap Note */}
             <div className="p-2.5 rounded-lg bg-[#0e1017] border border-[#1e2330] text-[10px] text-slate-400 mt-auto">
-              <div className="font-semibold text-slate-200 mb-0.5">Phase 4 Engine Aktif</div>
-              <p>Keyframes, Chroma Key, Masking, Tracking, Speed Ramp, Transitions & PiP siap digunakan.</p>
+              <div className="font-semibold text-slate-200 mb-0.5">Phase 5 Engine Aktif</div>
+              <p>Professional Text, Subtitle Track, Shape Graphics, Lower Thirds, dan Logo Overlays siap digunakan.</p>
             </div>
           </div>
         </>

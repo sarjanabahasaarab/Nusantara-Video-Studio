@@ -470,8 +470,20 @@ export const MenuBar: React.FC = () => {
       title: 'Tools',
       items: [
         {
-          label: 'Text (Titles & Subtitles)...',
+          label: 'Text, Subtitles & Graphics Studio...',
+          action: () => {
+            setActiveSidebarTab('text');
+            notify('Text & Graphics Studio', 'Membuka panel Text, Subtitles, Titles, Shapes & Templates.', 'info', 1500);
+          },
+        },
+        {
+          label: 'Subtitle Track Studio (SRT / VTT)...',
+          action: () => openDialog('subtitleStudio'),
+        },
+        {
+          label: 'Quick Text Generator...',
           action: () => openDialog('textGenerator'),
+          divider: true,
         },
         {
           label: 'Voice Recording...',
@@ -507,6 +519,10 @@ export const MenuBar: React.FC = () => {
       title: 'Export',
       items: [
         {
+          label: 'Export Subtitles (SRT / VTT)...',
+          action: () => openDialog('subtitleStudio'),
+        },
+        {
           label: 'Export Video (MP4 / WebM / Pro)...',
           action: () => comingSoon('Video Rendering & 4K Export Engine', 'Phase 9'),
         },
@@ -531,6 +547,10 @@ export const MenuBar: React.FC = () => {
         {
           label: 'Keyboard Shortcuts',
           action: () => openDialog('shortcuts'),
+        },
+        {
+          label: 'Phase 5 Automated Test Suite...',
+          action: () => openDialog('phase5Test'),
         },
         {
           label: 'Media Library Test Suite...',

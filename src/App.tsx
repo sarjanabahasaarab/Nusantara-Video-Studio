@@ -29,6 +29,8 @@ import { ScreenCaptureModal } from './components/capture/ScreenCaptureModal';
 import { CameraCaptureModal } from './components/capture/CameraCaptureModal';
 import { VoiceRecordingModal } from './components/capture/VoiceRecordingModal';
 import { TextGeneratorModal } from './components/text/TextGeneratorModal';
+import { SubtitleEditorModal } from './components/subtitles/SubtitleEditorModal';
+import { Phase5TestModal } from './components/dialogs/Phase5TestModal';
 
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoSave } from './hooks/useAutoSave';
@@ -51,8 +53,8 @@ export default function App() {
   useEffect(() => {
     databaseService.initialize().then(() => {
       notify(
-        'Nusantara Video Studio v0.4.0',
-        'Phase 4: Advanced Effects & Motion Engine aktif. Keyframes, Chroma Key, Masking, Tracking, Speed Ramp, Transitions & PiP siap digunakan.',
+        'Nusantara Video Studio v0.5.0',
+        'Phase 5: Professional Text, Subtitle & Graphics Studio aktif. Text, Titles, Subtitles, Captions, Lower Thirds, Shapes, Logo Overlays & Safe Area siap digunakan.',
         'info',
         4000
       );
@@ -99,6 +101,14 @@ export default function App() {
       <VoiceRecordingModal />
       <TextGeneratorModal
         isOpen={activeDialog === 'textGenerator'}
+        onClose={closeDialog}
+      />
+      <SubtitleEditorModal
+        isOpen={activeDialog === 'subtitleEditor' || activeDialog === 'subtitleStudio'}
+        onClose={closeDialog}
+      />
+      <Phase5TestModal
+        isOpen={activeDialog === 'phase5Test'}
         onClose={closeDialog}
       />
 

@@ -15,6 +15,9 @@ import {
   ClipBasicEffects,
   ClipTextProperties,
   ClipTransform,
+  LogoOverlayProperties,
+  ShapeProperties,
+  ShapeType,
   Track,
   TrackType,
 } from '../types';
@@ -91,6 +94,11 @@ export interface TimelineState {
   updateClipBasicEffects: (clipId: string, effects: Partial<ClipBasicEffects>) => void;
   updateClipAudio: (clipId: string, audio: Partial<ClipAudio>) => void;
   updateClipText: (clipId: string, textProps: Partial<ClipTextProperties>) => void;
+  updateClipShape: (clipId: string, shapeProps: Partial<ShapeProperties>) => void;
+  updateClipLogo: (clipId: string, logoProps: Partial<LogoOverlayProperties>) => void;
+  addShapeClip: (trackId?: string, shapeType?: ShapeType) => Clip;
+  addLogoClip: (trackId?: string, mediaId?: string, logoUrl?: string) => Clip;
+  addTextClip: (trackId?: string, textProps?: Partial<ClipTextProperties>, name?: string) => Clip;
   resetClipProperties: (clipId: string) => void;
 
   // Audio Keyframes
@@ -780,6 +788,175 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       }),
     }));
     projectStore.updateTracks(tracks);
+  },
+
+  updateClipShape: (clipId, shapeProps) => {
+    const projectStore = useProjectStore.getState();
+    const tracks = projectStore.currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.shapeProps || {
+          shapeType: 'rectangle',
+          fillColor: '#3b82f6',
+          strokeColor: '#60a5fa',
+          strokeWidth: 2,
+          opacity: 1,
+          width: 320,
+          height: 180,
+          cornerRadius: 0,
+        };
+        return {
+          ...c,
+          shapeProps: { ...current, ...shapeProps },
+        };
+      }),
+    }));
+    projectStore.updateTracks(tracks);
+  },
+
+  updateClipLogo: (clipId, logoProps) => {
+    const projectStore = useProjectStore.getState();
+    const tracks = projectStore.currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.logoProps || {
+          presetPosition: 'top-right',
+          scale: 1,
+          rotation: 0,
+          opacity: 1,
+        };
+        return {
+          ...c,
+          logoProps: { ...current, ...logoProps },
+        };
+      }),
+    }));
+    projectStore.updateTracks(tracks);
+  },
+
+  addShapeClip: (trackId, shapeType = 'rectangle') => {
+    const projectStore = useProjectStore.getState();
+    projectStore.pushHistorySnapshot();
+    const tracks = projectStore.currentProject.timeline.tracks;
+    const targetTrack =
+      (trackId ? tracks.find((t) => t.id === trackId) : null) ||
+      tracks.find((t) => t.id === 'track-v4') ||
+      tracks.find((t) => t.type === 'video') ||
+      tracks[0];
+
+    const playhead = get().currentTime;
+    const newClip: Clip = {
+      id: `clip-shape-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      trackId: targetTrack.id,
+      name: `Shape: ${shapeType.charAt(0).toUpperCase() + shapeType.slice(1)}`,
+      type: 'shape',
+      startTime: Math.max(0, parseFloat(playhead.toFixed(2))),
+      duration: 5,
+      sourceStartTime: 0,
+      sourceDuration: 5,
+      color: '#06b6d4',
+      transform: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1 },
+      speed: { rate: 1, reverse: false },
+      shapeProps: {
+        shapeType,
+        fillColor: shapeType === 'circle' ? '#ec4899' : shapeType === 'triangle' ? '#10b981' : '#3b82f6',
+        strokeColor: '#ffffff',
+        strokeWidth: 2,
+        opacity: 1,
+        width: shapeType === 'circle' ? 220 : 320,
+        height: shapeType === 'circle' ? 220 : 180,
+        cornerRadius: shapeType === 'rounded-rectangle' ? 24 : 0,
+      },
+    };
+
+    get().addClipToTrack(targetTrack.id, newClip);
+    useSelectionStore.getState().selectClip(newClip.id);
+    return newClip;
+  },
+
+  addLogoClip: (trackId, mediaId, logoUrl) => {
+    const projectStore = useProjectStore.getState();
+    projectStore.pushHistorySnapshot();
+    const tracks = projectStore.currentProject.timeline.tracks;
+    const targetTrack =
+      (trackId ? tracks.find((t) => t.id === trackId) : null) ||
+      tracks.find((t) => t.id === 'track-v3') ||
+      tracks.find((t) => t.type === 'video') ||
+      tracks[0];
+
+    const playhead = get().currentTime;
+    const newClip: Clip = {
+      id: `clip-logo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      trackId: targetTrack.id,
+      name: 'Logo Overlay',
+      type: 'logo',
+      mediaId,
+      startTime: Math.max(0, parseFloat(playhead.toFixed(2))),
+      duration: 8,
+      sourceStartTime: 0,
+      sourceDuration: 8,
+      color: '#8b5cf6',
+      transform: { positionX: 380, positionY: -220, scaleX: 0.6, scaleY: 0.6, rotation: 0, opacity: 0.9 },
+      speed: { rate: 1, reverse: false },
+      logoProps: {
+        mediaId,
+        logoUrl,
+        presetPosition: 'top-right',
+        scale: 0.6,
+        rotation: 0,
+        opacity: 0.9,
+        borderWidth: 0,
+        shadowBlur: 10,
+        shadowColor: '#000000',
+      },
+    };
+
+    get().addClipToTrack(targetTrack.id, newClip);
+    useSelectionStore.getState().selectClip(newClip.id);
+    return newClip;
+  },
+
+  addTextClip: (trackId, textProps, name = 'Text Layer') => {
+    const projectStore = useProjectStore.getState();
+    projectStore.pushHistorySnapshot();
+    const tracks = projectStore.currentProject.timeline.tracks;
+    const targetTrack =
+      (trackId ? tracks.find((t) => t.id === trackId) : null) ||
+      tracks.find((t) => t.id === 'track-v5') ||
+      tracks.find((t) => t.type === 'video') ||
+      tracks[0];
+
+    const playhead = get().currentTime;
+    const newClip: Clip = {
+      id: `clip-text-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      trackId: targetTrack.id,
+      name,
+      type: 'text',
+      startTime: Math.max(0, parseFloat(playhead.toFixed(2))),
+      duration: 5,
+      sourceStartTime: 0,
+      sourceDuration: 5,
+      color: '#d97706',
+      transform: { positionX: 0, positionY: 0, scaleX: 1, scaleY: 1, rotation: 0, opacity: 1 },
+      speed: { rate: 1, reverse: false },
+      textProps: {
+        text: 'Nusantara Video Studio',
+        fontFamily: 'Inter',
+        fontSize: 48,
+        fontWeight: 600,
+        color: '#ffffff',
+        alignment: 'center',
+        shadowBlur: 8,
+        shadowColor: '#000000',
+        ...textProps,
+      },
+    };
+
+    get().addClipToTrack(targetTrack.id, newClip);
+    useSelectionStore.getState().selectClip(newClip.id);
+    return newClip;
   },
 
   resetClipProperties: (clipId) => {

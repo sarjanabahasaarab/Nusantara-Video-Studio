@@ -19,11 +19,18 @@ import {
   Maximize2,
   RotateCw,
   Tv,
+  Grid,
+  Crosshair,
+  ShieldAlert,
+  Layers,
+  Edit3,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useMediaStore } from '../../stores/mediaStore';
+import { useGraphicsStore } from '../../stores/graphicsStore';
+import { useSubtitleStore } from '../../stores/subtitleStore';
 import { secondsToTimecode } from '../../utils/timecode';
 import { Clip } from '../../types';
 import { KeyframeEngine } from '../../engine/keyframes/KeyframeEngine';
@@ -31,6 +38,8 @@ import { EffectLibrary } from '../../engine/effects/EffectLibrary';
 import { MaskEngine } from '../../engine/masking/MaskEngine';
 import { ChromaKeyEngine } from '../../engine/chromakey/ChromaKeyEngine';
 import { TransitionEngine } from '../../engine/transitions/TransitionEngine';
+import { ShapeEngine } from '../../engine/graphics/ShapeEngine';
+import { TextAnimationEngine } from '../../engine/text/TextAnimationEngine';
 
 export const VideoPreview: React.FC = () => {
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -48,9 +57,19 @@ export const VideoPreview: React.FC = () => {
   const previewMuted = useTimelineStore((s) => s.previewMuted);
   const setPreviewMuted = useTimelineStore((s) => s.setPreviewMuted);
   const updateClipTransform = useTimelineStore((s) => s.updateClipTransform);
+  const updateClipText = useTimelineStore((s) => s.updateClipText);
 
   const selectedClipId = useSelectionStore((s) => s.selectedClipId);
   const mediaItems = useMediaStore((s) => s.items);
+
+  // Phase 5 Safe Area & Subtitles
+  const safeArea = useGraphicsStore((s) => s.safeArea);
+  const toggleSafeArea = useGraphicsStore((s) => s.toggleSafeArea);
+  const setSafeAreaSetting = useGraphicsStore((s) => s.setSafeAreaSetting);
+  const activeSubtitleTrack = useSubtitleStore((s) => s.getActiveTrack());
+
+  const [inlineEditingClipId, setInlineEditingClipId] = useState<string | null>(null);
+  const [showSafeAreaMenu, setShowSafeAreaMenu] = useState(false);
 
   const monitorContainerRef = useRef<HTMLDivElement>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -147,6 +166,14 @@ export const VideoPreview: React.FC = () => {
   const selectedActiveItem = useMemo(() => {
     return activeClipsAtTime.find((item) => item.clip.id === selectedClipId);
   }, [activeClipsAtTime, selectedClipId]);
+
+  // Phase 5: Find active subtitle at playhead
+  const activeSubtitleAtTime = useMemo(() => {
+    if (!activeSubtitleTrack || !activeSubtitleTrack.visible) return null;
+    return activeSubtitleTrack.items.find(
+      (it) => currentTime >= it.startTime && currentTime <= it.endTime
+    );
+  }, [activeSubtitleTrack, currentTime]);
 
   // Direct Preview Manipulation Handlers
   const handleStartInteraction = (
@@ -417,27 +444,164 @@ export const VideoPreview: React.FC = () => {
                   }}
                   className="relative overflow-hidden"
                 >
-                {/* Visual Content: Video / Image / Text */}
+                {/* Visual Content: Video / Image / Text / Shape / Logo */}
                 {clip.type === 'text' && clip.textProps ? (
+                  inlineEditingClipId === clip.id ? (
+                    <textarea
+                      autoFocus
+                      value={clip.textProps.text}
+                      onChange={(e) => updateClipText(clip.id, { text: e.target.value })}
+                      onBlur={() => setInlineEditingClipId(null)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Escape') setInlineEditingClipId(null);
+                      }}
+                      style={{
+                        fontFamily: clip.textProps.fontFamily,
+                        fontSize: `${Math.round(clip.textProps.fontSize * 0.75)}px`,
+                        fontWeight: clip.textProps.bold ? 'bold' : clip.textProps.fontWeight || 'normal',
+                        fontStyle: clip.textProps.italic ? 'italic' : 'normal',
+                        textDecoration: clip.textProps.underline ? 'underline' : 'none',
+                        letterSpacing: clip.textProps.letterSpacing ? `${clip.textProps.letterSpacing}px` : undefined,
+                        lineHeight: clip.textProps.lineHeight || 1.2,
+                        color: clip.textProps.color,
+                        backgroundColor: clip.textProps.backgroundColor || 'rgba(0,0,0,0.65)',
+                        textAlign: clip.textProps.alignment,
+                      }}
+                      className="p-2 rounded resize-none border border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                    />
+                  ) : (
+                    <div
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        setInlineEditingClipId(clip.id);
+                      }}
+                      style={{
+                        fontFamily: clip.textProps.fontFamily,
+                        fontSize: `${Math.round(clip.textProps.fontSize * 0.75)}px`,
+                        fontWeight: clip.textProps.bold ? 'bold' : clip.textProps.fontWeight || 'normal',
+                        fontStyle: clip.textProps.italic ? 'italic' : 'normal',
+                        textDecoration: clip.textProps.underline ? 'underline' : 'none',
+                        letterSpacing: clip.textProps.letterSpacing ? `${clip.textProps.letterSpacing}px` : undefined,
+                        lineHeight: clip.textProps.lineHeight || 1.2,
+                        color: clip.textProps.color,
+                        backgroundColor: clip.textProps.backgroundColor,
+                        textAlign: clip.textProps.alignment,
+                        padding: clip.textProps.padding ? `${clip.textProps.padding}px` : undefined,
+                        WebkitTextStroke: clip.textProps.outlineWidth
+                          ? `${clip.textProps.outlineWidth}px ${clip.textProps.outlineColor || '#000'}`
+                          : undefined,
+                        textShadow: clip.textProps.shadowBlur
+                          ? `${clip.textProps.shadowOffsetX || 0}px ${clip.textProps.shadowOffsetY || 2}px ${clip.textProps.shadowBlur}px ${clip.textProps.shadowColor || '#000'}`
+                          : undefined,
+                      }}
+                      className="px-4 py-2 rounded select-none whitespace-pre-wrap cursor-pointer"
+                      title="Klik ganda untuk mengedit teks langsung di preview"
+                    >
+                      {TextAnimationEngine.evaluateTypewriterText(
+                        clip.textProps.text,
+                        relTime,
+                        clip.textProps.animation
+                      )}
+                    </div>
+                  )
+                ) : clip.type === 'shape' && clip.shapeProps ? (
                   <div
                     style={{
-                      fontFamily: clip.textProps.fontFamily,
-                      fontSize: `${Math.round(clip.textProps.fontSize * 0.75)}px`,
-                      fontWeight: clip.textProps.bold ? 'bold' : 'normal',
-                      fontStyle: clip.textProps.italic ? 'italic' : 'normal',
-                      color: clip.textProps.color,
-                      backgroundColor: clip.textProps.backgroundColor,
-                      textAlign: clip.textProps.alignment,
-                      WebkitTextStroke: clip.textProps.outlineWidth
-                        ? `${clip.textProps.outlineWidth}px ${clip.textProps.outlineColor || '#000'}`
-                        : undefined,
-                      textShadow: clip.textProps.shadowBlur
-                        ? `0 2px ${clip.textProps.shadowBlur}px ${clip.textProps.shadowColor || '#000'}`
-                        : undefined,
+                      width: `${clip.shapeProps.width}px`,
+                      height: `${clip.shapeProps.height}px`,
+                      opacity: clip.shapeProps.opacity ?? 1,
                     }}
-                    className="px-4 py-2 rounded select-none whitespace-pre-wrap"
+                    className="relative flex items-center justify-center select-none"
                   >
-                    {clip.textProps.text}
+                    <svg
+                      width={clip.shapeProps.width}
+                      height={clip.shapeProps.height}
+                      viewBox={`0 0 ${clip.shapeProps.width} ${clip.shapeProps.height}`}
+                      className="overflow-visible"
+                    >
+                      {clip.shapeProps.shapeType === 'rectangle' ? (
+                        <rect
+                          x={clip.shapeProps.strokeWidth / 2}
+                          y={clip.shapeProps.strokeWidth / 2}
+                          width={clip.shapeProps.width - clip.shapeProps.strokeWidth}
+                          height={clip.shapeProps.height - clip.shapeProps.strokeWidth}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : clip.shapeProps.shapeType === 'rounded-rectangle' ? (
+                        <rect
+                          x={clip.shapeProps.strokeWidth / 2}
+                          y={clip.shapeProps.strokeWidth / 2}
+                          width={clip.shapeProps.width - clip.shapeProps.strokeWidth}
+                          height={clip.shapeProps.height - clip.shapeProps.strokeWidth}
+                          rx={clip.shapeProps.cornerRadius || 16}
+                          ry={clip.shapeProps.cornerRadius || 16}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : clip.shapeProps.shapeType === 'circle' ? (
+                        <circle
+                          cx={clip.shapeProps.width / 2}
+                          cy={clip.shapeProps.height / 2}
+                          r={Math.max(1, Math.min(clip.shapeProps.width, clip.shapeProps.height) / 2 - clip.shapeProps.strokeWidth / 2)}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : clip.shapeProps.shapeType === 'ellipse' ? (
+                        <ellipse
+                          cx={clip.shapeProps.width / 2}
+                          cy={clip.shapeProps.height / 2}
+                          rx={Math.max(1, clip.shapeProps.width / 2 - clip.shapeProps.strokeWidth / 2)}
+                          ry={Math.max(1, clip.shapeProps.height / 2 - clip.shapeProps.strokeWidth / 2)}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : clip.shapeProps.shapeType === 'line' ? (
+                        <line
+                          x1={0}
+                          y1={clip.shapeProps.height / 2}
+                          x2={clip.shapeProps.width}
+                          y2={clip.shapeProps.height / 2}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : clip.shapeProps.shapeType === 'arrow' ? (
+                        <path
+                          d={ShapeEngine.getArrowPath(clip.shapeProps.width, clip.shapeProps.height, clip.shapeProps.arrowDirection || 'right')}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      ) : (
+                        <path
+                          d={ShapeEngine.getTrianglePath(clip.shapeProps.width, clip.shapeProps.height)}
+                          fill={clip.shapeProps.fillColor}
+                          stroke={clip.shapeProps.strokeColor}
+                          strokeWidth={clip.shapeProps.strokeWidth}
+                        />
+                      )}
+                    </svg>
+                  </div>
+                ) : clip.type === 'logo' ? (
+                  <div
+                    style={{
+                      border: clip.logoProps?.borderWidth ? `${clip.logoProps.borderWidth}px solid ${clip.logoProps.borderColor || '#fff'}` : undefined,
+                      boxShadow: clip.logoProps?.shadowBlur ? `0 4px ${clip.logoProps.shadowBlur}px ${clip.logoProps.shadowColor || '#000'}` : undefined,
+                      opacity: clip.logoProps?.opacity ?? 1,
+                    }}
+                    className="relative max-w-xs max-h-36 overflow-hidden rounded select-none"
+                  >
+                    {mediaUrl ? (
+                      <img src={mediaUrl} alt={clip.name} className="w-full h-full object-contain pointer-events-none" />
+                    ) : (
+                      <div className="w-32 h-20 bg-purple-900/60 border border-purple-500/40 rounded flex items-center justify-center text-purple-300 font-semibold text-[10px]">
+                        Logo Overlay
+                      </div>
+                    )}
                   </div>
                 ) : clip.type === 'image' ? (
                   <div className="relative max-w-md max-h-80 overflow-hidden rounded">
@@ -522,6 +686,74 @@ export const VideoPreview: React.FC = () => {
             }
             return null;
           })}
+
+          {/* Phase 5 Subtitle Track Overlay at Current Time (Requirements 11, 12, 13) */}
+          {activeSubtitleAtTime && (
+            <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center px-8 z-30 pointer-events-none select-none">
+              <div
+                style={{
+                  fontFamily: activeSubtitleTrack?.defaultStyle?.fontFamily || 'Inter',
+                  fontSize: `${activeSubtitleTrack?.defaultStyle?.fontSize ? Math.round(activeSubtitleTrack.defaultStyle.fontSize * 0.7) : 24}px`,
+                  color: activeSubtitleTrack?.defaultStyle?.color || '#ffffff',
+                  backgroundColor: activeSubtitleTrack?.defaultStyle?.backgroundColor || 'rgba(0, 0, 0, 0.75)',
+                  WebkitTextStroke: activeSubtitleTrack?.defaultStyle?.outlineWidth
+                    ? `${activeSubtitleTrack.defaultStyle.outlineWidth}px ${activeSubtitleTrack.defaultStyle.outlineColor || '#000'}`
+                    : '1px #000',
+                  textShadow: '0 2px 8px rgba(0, 0, 0, 0.85)',
+                }}
+                className="px-4 py-1.5 rounded text-center max-w-[85%] whitespace-pre-wrap leading-relaxed shadow-lg font-medium"
+              >
+                {activeSubtitleAtTime.text}
+              </div>
+            </div>
+          )}
+
+          {/* Phase 5 Title Safe Area Guides (Requirement 10) */}
+          {safeArea.showSafeArea && (
+            <div className="absolute inset-0 pointer-events-none select-none z-40 overflow-hidden">
+              {/* Action Safe (90% boundary) */}
+              {safeArea.showActionSafe && (
+                <div className="absolute inset-[5%] border border-amber-400/40 border-dotted flex items-start justify-start p-1">
+                  <span className="text-[8px] font-mono text-amber-400/70 bg-black/60 px-1 rounded">
+                    ACTION SAFE (90%)
+                  </span>
+                </div>
+              )}
+
+              {/* Title Safe (80% boundary) */}
+              {safeArea.showTitleSafe && (
+                <div className="absolute inset-[10%] border border-cyan-400/50 border-dashed flex items-start justify-start p-1">
+                  <span className="text-[8px] font-mono text-cyan-400/80 bg-black/60 px-1 rounded">
+                    TITLE SAFE (80%)
+                  </span>
+                </div>
+              )}
+
+              {/* Center Crosshair Guide */}
+              {safeArea.showCenterGuide && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-8 h-[1px] bg-red-400/70 absolute" />
+                  <div className="h-8 w-[1px] bg-red-400/70 absolute" />
+                  <div className="w-3 h-3 rounded-full border border-red-400/50 absolute" />
+                </div>
+              )}
+
+              {/* 3x3 Grid (Rule of Thirds) */}
+              {safeArea.showGrid && (
+                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 pointer-events-none">
+                  <div className="border-r border-b border-white/15" />
+                  <div className="border-r border-b border-white/15" />
+                  <div className="border-b border-white/15" />
+                  <div className="border-r border-b border-white/15" />
+                  <div className="border-r border-b border-white/15" />
+                  <div className="border-b border-white/15" />
+                  <div className="border-r border-b border-white/15" />
+                  <div className="border-r border-b border-white/15" />
+                  <div />
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Project Framing Badge */}
           <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/75 font-mono text-[9px] text-slate-300 pointer-events-none border border-white/5">
@@ -618,6 +850,77 @@ export const VideoPreview: React.FC = () => {
             <span className="font-mono text-[9px] text-slate-400 w-6 text-right">
               {previewMuted ? 0 : previewVolume}%
             </span>
+          </div>
+
+          {/* Safe Area Guides Toggle & Options (Requirement 10) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowSafeAreaMenu(!showSafeAreaMenu)}
+              className={`p-1.5 rounded transition-colors ${
+                safeArea.showSafeArea
+                  ? 'bg-blue-600/30 text-blue-400 border border-blue-500/40'
+                  : 'text-slate-400 hover:text-white hover:bg-[#1a1f2b]'
+              }`}
+              title="Title Safe Area & Grid Guides"
+            >
+              <Grid className="w-3.5 h-3.5" />
+            </button>
+
+            {showSafeAreaMenu && (
+              <div className="absolute bottom-full right-0 mb-2 w-48 bg-[#141824] border border-[#252f42] rounded-xl shadow-2xl p-2 z-50 flex flex-col gap-1 text-[11px] select-none">
+                <div className="px-2 py-1 font-semibold text-slate-300 border-b border-[#202738] flex items-center justify-between">
+                  <span>Safe Area Guides</span>
+                  <button
+                    onClick={toggleSafeArea}
+                    className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                      safeArea.showSafeArea ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300'
+                    }`}
+                  >
+                    {safeArea.showSafeArea ? 'ON' : 'OFF'}
+                  </button>
+                </div>
+
+                <label className="flex items-center justify-between px-2 py-1 rounded hover:bg-[#1a2030] cursor-pointer">
+                  <span className="text-slate-300">Title Safe (80%)</span>
+                  <input
+                    type="checkbox"
+                    checked={safeArea.showTitleSafe}
+                    onChange={(e) => setSafeAreaSetting('showTitleSafe', e.target.checked)}
+                    className="accent-blue-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between px-2 py-1 rounded hover:bg-[#1a2030] cursor-pointer">
+                  <span className="text-slate-300">Action Safe (90%)</span>
+                  <input
+                    type="checkbox"
+                    checked={safeArea.showActionSafe}
+                    onChange={(e) => setSafeAreaSetting('showActionSafe', e.target.checked)}
+                    className="accent-blue-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between px-2 py-1 rounded hover:bg-[#1a2030] cursor-pointer">
+                  <span className="text-slate-300">Center Guide (+)</span>
+                  <input
+                    type="checkbox"
+                    checked={safeArea.showCenterGuide}
+                    onChange={(e) => setSafeAreaSetting('showCenterGuide', e.target.checked)}
+                    className="accent-blue-500"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between px-2 py-1 rounded hover:bg-[#1a2030] cursor-pointer">
+                  <span className="text-slate-300">Rule of Thirds Grid</span>
+                  <input
+                    type="checkbox"
+                    checked={safeArea.showGrid}
+                    onChange={(e) => setSafeAreaSetting('showGrid', e.target.checked)}
+                    className="accent-blue-500"
+                  />
+                </label>
+              </div>
+            )}
           </div>
 
           <button

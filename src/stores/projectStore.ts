@@ -23,14 +23,16 @@ import {
 } from '../types';
 
 /**
- * Migration helper from v1 to v2 schema (Requirement 20).
- * Preserves all Phase 1-3 media, tracks, settings, and markers safely.
+ * Migration helper from v1/v2 to v3 schema.
+ * Phase 5: Preserves text clips, subtitle tracks, subtitle entries, caption settings,
+ * graphic layers, font settings, animation keyframes, logo references, shape properties,
+ * and safe area guide preferences.
  */
 export const migrateProject = (raw: any): Project => {
   if (!raw) return createDefaultProject();
 
   const project: Project = {
-    projectVersion: 2,
+    projectVersion: 3,
     id: raw.id || `nvs-proj-${Date.now()}`,
     name: raw.name || 'Migrated Project',
     createdAt: raw.createdAt || new Date().toISOString(),
@@ -62,11 +64,19 @@ export const migrateProject = (raw: any): Project => {
       duration: raw.timeline?.duration || raw.settings?.duration || 180,
       markers: Array.isArray(raw.timeline?.markers) ? raw.timeline.markers : [],
       transitions: Array.isArray(raw.timeline?.transitions) ? raw.timeline.transitions : [],
+      subtitleTracks: Array.isArray(raw.timeline?.subtitleTracks) ? raw.timeline.subtitleTracks : [],
+      safeArea: raw.timeline?.safeArea || {
+        showSafeArea: false,
+        showTitleSafe: true,
+        showActionSafe: true,
+        showCenterGuide: true,
+        showGrid: false,
+      },
     },
     metadata: {
-      appVersion: '0.4.0',
+      appVersion: '0.5.0',
       appName: 'Nusantara Video Studio',
-      lastSavedBy: raw.metadata?.lastSavedBy || 'NVS Engine',
+      lastSavedBy: raw.metadata?.lastSavedBy || 'NVS Phase 5 Engine',
     },
   };
 
@@ -201,7 +211,7 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
   const now = new Date().toISOString();
 
   return {
-    projectVersion: 2,
+    projectVersion: 3,
     id,
     name: settings.name,
     createdAt: now,
@@ -213,9 +223,37 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
       duration: settings.duration,
       markers: [],
       transitions: [],
+      subtitleTracks: [
+        {
+          id: 'sub-track-1',
+          name: 'Subtitles (Bahasa Indonesia)',
+          language: 'id',
+          visible: true,
+          locked: false,
+          items: [],
+          defaultStyle: {
+            fontFamily: 'Inter',
+            fontSize: 32,
+            color: '#ffffff',
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            alignment: 'center',
+            outlineWidth: 2,
+            outlineColor: '#000000',
+            shadowBlur: 8,
+            shadowColor: '#000000',
+          },
+        },
+      ],
+      safeArea: {
+        showSafeArea: false,
+        showTitleSafe: true,
+        showActionSafe: true,
+        showCenterGuide: true,
+        showGrid: false,
+      },
     },
     metadata: {
-      appVersion: '0.4.0',
+      appVersion: '0.5.0',
       appName: 'Nusantara Video Studio',
     },
   };
@@ -383,13 +421,64 @@ export const createDemoProject = (): Project => {
     speed: { rate: 1, reverse: false },
   };
 
+  // 7. Shape Accent Clip on V4
+  const shapeClip: Clip = {
+    id: 'demo-clip-v4-1',
+    trackId: 'track-v4',
+    name: 'Accent Badge (Rounded Rect)',
+    type: 'shape',
+    startTime: 2,
+    duration: 8,
+    sourceStartTime: 0,
+    sourceDuration: 8,
+    color: '#06b6d4',
+    transform: { positionX: 0, positionY: 220, scaleX: 1, scaleY: 1, rotation: 0, opacity: 0.9 },
+    speed: { rate: 1, reverse: false },
+    shapeProps: {
+      shapeType: 'rounded-rectangle',
+      fillColor: '#0284c7',
+      strokeColor: '#38bdf8',
+      strokeWidth: 2,
+      opacity: 0.85,
+      width: 440,
+      height: 70,
+      cornerRadius: 16,
+    },
+  };
+
   // Assign clips to tracks
   tracks.find((t) => t.id === 'track-v1')!.clips = [videoClip1, videoClip2];
   tracks.find((t) => t.id === 'track-v2')!.clips = [imageClip1];
   tracks.find((t) => t.id === 'track-v3')!.clips = [imageClip2];
+  tracks.find((t) => t.id === 'track-v4')!.clips = [shapeClip];
   tracks.find((t) => t.id === 'track-v5')!.clips = [textClip];
   tracks.find((t) => t.id === 'track-a1')!.clips = [audioClip1];
   tracks.find((t) => t.id === 'track-a3')!.clips = [audioClip2];
+
+  // Demo Indonesian Subtitle Track Entries (Requirement 11, 12, 13, 20)
+  const demoSubtitles = [
+    {
+      id: 'sub-demo-1',
+      index: 1,
+      startTime: 2.0,
+      endTime: 5.5,
+      text: 'Selamat datang di Nusantara Video Studio.',
+    },
+    {
+      id: 'sub-demo-2',
+      index: 2,
+      startTime: 6.0,
+      endTime: 10.5,
+      text: 'Solusi profesional penyuntingan video desktop Indonesia.',
+    },
+    {
+      id: 'sub-demo-3',
+      index: 3,
+      startTime: 11.0,
+      endTime: 16.0,
+      text: 'Eksplorasi keindahan zamrud khatulistiwa dengan kualitas 4K.',
+    },
+  ];
 
   // 1 Transition between V1 clips (Requirement 14 & 15)
   const demoTransition: TimelineTransition = {
@@ -452,6 +541,27 @@ export const createDemoProject = (): Project => {
   base.timeline.markers = [marker];
   base.timeline.transitions = [demoTransition];
   base.timeline.duration = 60; // 1 min demo timeline
+  base.timeline.subtitleTracks = [
+    {
+      id: 'sub-track-demo',
+      name: 'Subtitles (Bahasa Indonesia)',
+      language: 'id',
+      visible: true,
+      locked: false,
+      items: demoSubtitles,
+      defaultStyle: {
+        fontFamily: 'Inter',
+        fontSize: 32,
+        color: '#ffffff',
+        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        alignment: 'center',
+        outlineWidth: 2,
+        outlineColor: '#000000',
+        shadowBlur: 8,
+        shadowColor: '#000000',
+      },
+    },
+  ];
 
   return base;
 };

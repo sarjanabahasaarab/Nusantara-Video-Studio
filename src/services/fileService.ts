@@ -8,11 +8,12 @@ import { Project } from '../types';
 export class FileService {
   /**
    * Serializes project to formatted JSON string (.nvproj format)
-   * Phase 4: Full serialization of keyframes, transitions, masks, chroma key, speed, effects, and PiP.
+   * Phase 5: Full serialization of text clips, subtitle tracks, graphic layers,
+   * shape properties, logo overlays, keyframes, transitions, and safe area settings.
    */
   serializeProject(project: Project): string {
     const filePayload = {
-      projectVersion: 2,
+      projectVersion: 3,
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
@@ -21,9 +22,9 @@ export class FileService {
       media: project.media,
       timeline: project.timeline,
       metadata: {
-        appVersion: '0.4.0',
+        appVersion: '0.5.0',
         appName: 'Nusantara Video Studio',
-        lastSavedBy: 'Nusantara Video Studio v0.4.0',
+        lastSavedBy: 'Nusantara Video Studio v0.5.0',
       },
     };
 
@@ -31,7 +32,7 @@ export class FileService {
   }
 
   /**
-   * Validates and parses a string as a valid .nvproj Project object (supports v1 and v2)
+   * Validates and parses a string as a valid .nvproj Project object (supports v1, v2, and v3)
    */
   parseProject(jsonString: string): { valid: boolean; project?: Project; error?: string } {
     try {
@@ -41,10 +42,10 @@ export class FileService {
         return { valid: false, error: 'File format is not a valid JSON structure.' };
       }
 
-      if (parsed.projectVersion !== 1 && parsed.projectVersion !== 2) {
+      if (parsed.projectVersion !== 1 && parsed.projectVersion !== 2 && parsed.projectVersion !== 3) {
         return {
           valid: false,
-          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1 or 2.`,
+          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1, 2, or 3.`,
         };
       }
 
