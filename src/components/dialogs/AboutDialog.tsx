@@ -20,8 +20,8 @@ export const AboutDialog: React.FC = () => {
     { phase: 'Phase 3', name: 'Timeline & Capture Engine', status: 'completed' },
     { phase: 'Phase 4', name: 'Advanced Effects & Motion Engine', status: 'completed' },
     { phase: 'Phase 5', name: 'Professional Text, Subtitle & Graphics Studio', status: 'completed' },
-    { phase: 'Phase 6', name: 'Audio Studio & Mixing', status: 'upcoming' },
-    { phase: 'Phase 7', name: 'Color Grading & LUT Studio', status: 'upcoming' },
+    { phase: 'Phase 6', name: 'Professional Color & Audio Studio', status: 'completed' },
+    { phase: 'Phase 7', name: 'AI-Assisted Editing & Smart Tools', status: 'upcoming' },
     { phase: 'Phase 8', name: 'Multi-Camera & Sync Engine', status: 'upcoming' },
     { phase: 'Phase 9', name: 'Rendering & 4K Export Engine', status: 'upcoming' },
     { phase: 'Phase 10', name: 'Final Release & Ecosystem', status: 'upcoming' },
@@ -44,7 +44,7 @@ export const AboutDialog: React.FC = () => {
           Professional Desktop Video Editor
         </p>
         <span className="inline-block mt-1 px-2.5 py-0.5 rounded-full bg-[#1f2535] text-[10px] text-blue-300 font-mono border border-blue-500/30">
-          Version 0.5.0 • Phase 5 Professional Text, Subtitle & Graphics Studio
+          Version 0.6.0 • Phase 6 Professional Color & Audio Studio
         </span>
 
         <p className="text-[11px] text-slate-400 mt-3 leading-relaxed max-w-sm">

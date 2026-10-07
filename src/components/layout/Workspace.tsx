@@ -8,14 +8,25 @@ import { Sidebar } from '../sidebar/Sidebar';
 import { VideoPreview } from '../preview/VideoPreview';
 import { PropertiesPanel } from '../properties/PropertiesPanel';
 import { Timeline } from '../timeline/Timeline';
+import { ColorWorkspace } from '../color/ColorWorkspace';
+import { AudioWorkspace } from '../audio/AudioWorkspace';
 import { useUIStore } from '../../stores/uiStore';
 
 export const Workspace: React.FC = () => {
+  const activeWorkspace = useUIStore((s) => s.activeWorkspace);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const sidebarWidth = useUIStore((s) => s.sidebarWidth);
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth);
   const propertiesWidth = useUIStore((s) => s.propertiesWidth);
   const setPropertiesWidth = useUIStore((s) => s.setPropertiesWidth);
+
+  if (activeWorkspace === 'color') {
+    return <ColorWorkspace />;
+  }
+
+  if (activeWorkspace === 'audio') {
+    return <AudioWorkspace />;
+  }
 
   // Left sidebar horizontal resize drag
   const handleSidebarResize = (e: React.PointerEvent) => {

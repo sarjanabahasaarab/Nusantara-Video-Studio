@@ -8,12 +8,12 @@ import { Project } from '../types';
 export class FileService {
   /**
    * Serializes project to formatted JSON string (.nvproj format)
-   * Phase 5: Full serialization of text clips, subtitle tracks, graphic layers,
-   * shape properties, logo overlays, keyframes, transitions, and safe area settings.
+   * Phase 6: Full serialization of color grading (basic, curves, wheels, HSL, LUT, vignette),
+   * audio mixer channels, master bus, 5-band EQ, compressor, limiter, and audio keyframes.
    */
   serializeProject(project: Project): string {
     const filePayload = {
-      projectVersion: 3,
+      projectVersion: 4,
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
@@ -22,9 +22,9 @@ export class FileService {
       media: project.media,
       timeline: project.timeline,
       metadata: {
-        appVersion: '0.5.0',
+        appVersion: '0.6.0',
         appName: 'Nusantara Video Studio',
-        lastSavedBy: 'Nusantara Video Studio v0.5.0',
+        lastSavedBy: 'Nusantara Video Studio v0.6.0',
       },
     };
 
@@ -32,7 +32,7 @@ export class FileService {
   }
 
   /**
-   * Validates and parses a string as a valid .nvproj Project object (supports v1, v2, and v3)
+   * Validates and parses a string as a valid .nvproj Project object (supports v1, v2, v3, and v4)
    */
   parseProject(jsonString: string): { valid: boolean; project?: Project; error?: string } {
     try {
@@ -42,10 +42,15 @@ export class FileService {
         return { valid: false, error: 'File format is not a valid JSON structure.' };
       }
 
-      if (parsed.projectVersion !== 1 && parsed.projectVersion !== 2 && parsed.projectVersion !== 3) {
+      if (
+        parsed.projectVersion !== 1 &&
+        parsed.projectVersion !== 2 &&
+        parsed.projectVersion !== 3 &&
+        parsed.projectVersion !== 4
+      ) {
         return {
           valid: false,
-          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1, 2, or 3.`,
+          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1, 2, 3, or 4.`,
         };
       }
 

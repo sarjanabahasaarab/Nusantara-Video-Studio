@@ -1,10 +1,20 @@
 /**
  * Nusantara Video Studio - Core Type Definitions
- * Phase 3: Professional Timeline & Capture Engine
- *
- * Comprehensive types for multi-track timeline, direct preview manipulation,
- * audio waveforms and keyframes, screen/camera/voice capture, and project serialization.
+ * Phase 6: Professional Color & Audio Studio
  */
+
+import { ClipColorGrading } from './color';
+import { ClipAudioEffects, TrackMixerChannel, MasterAudioBus } from './audio';
+
+export * from './color';
+export * from './audio';
+
+export interface ProcessingNode {
+  id: string;
+  type: string;
+  enabled: boolean;
+  parameters: Record<string, unknown>;
+}
 
 export type ResolutionPreset = '1280x720' | '1920x1080' | '2560x1440' | '3840x2160';
 export type AspectRatio = '16:9' | '9:16' | '1:1' | '4:3';
@@ -498,6 +508,10 @@ export interface BaseClip {
   graphicLayers?: GraphicLayer[];
   subtitleItem?: SubtitleItem;
 
+  // Phase 6 Professional Color & Audio Studio
+  colorGrading?: ClipColorGrading;
+  audioEffects?: ClipAudioEffects;
+
   // Phase 3 convenience aliases
   start?: number;
   sourceStart?: number;
@@ -550,6 +564,7 @@ export interface Track {
   hidden: boolean;
   solo?: boolean;
   clips: Clip[];
+  audioSettings?: TrackMixerChannel;
 }
 
 export interface TimelineMarker {
@@ -567,12 +582,13 @@ export interface TimelineData {
   markers?: TimelineMarker[];
   transitions?: TimelineTransition[];
   subtitleTracks?: SubtitleTrack[];
+  masterBus?: MasterAudioBus;
   snapping: boolean;
   loop: boolean;
 }
 
 export interface Project {
-  projectVersion: 1 | 2 | 3;
+  projectVersion: 1 | 2 | 3 | 4;
   id: string;
   name: string;
   createdAt: string;
@@ -586,6 +602,7 @@ export interface Project {
     transitions?: TimelineTransition[];
     subtitleTracks?: SubtitleTrack[];
     safeArea?: SafeAreaSettings;
+    masterBus?: MasterAudioBus;
   };
   metadata: {
     appVersion: string;

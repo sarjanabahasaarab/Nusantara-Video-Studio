@@ -15,6 +15,9 @@ export const TitleBar: React.FC = () => {
   const toggleFullscreen = useUIStore((s) => s.toggleFullscreen);
   const notify = useUIStore((s) => s.notify);
 
+  const activeWorkspace = useUIStore((s) => s.activeWorkspace);
+  const setActiveWorkspace = useUIStore((s) => s.setActiveWorkspace);
+
   const handleMinimize = () => {
     notify('Window', 'Aplikasi diminimalkan (Tauri desktop window).', 'info', 1500);
   };
@@ -40,8 +43,31 @@ export const TitleBar: React.FC = () => {
           Nusantara Video Studio
         </span>
         <span className="text-[9px] font-mono text-blue-400 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">
-          v0.5.0
+          v0.6.0
         </span>
+
+        {/* Workspace Switcher Tabs */}
+        <div className="flex items-center bg-[#131620] border border-[#232b3c] rounded-md p-0.5 ml-2">
+          {(
+            [
+              { id: 'edit', label: 'Editing' },
+              { id: 'color', label: 'Color' },
+              { id: 'audio', label: 'Audio' },
+            ] as const
+          ).map((ws) => (
+            <button
+              key={ws.id}
+              onClick={() => setActiveWorkspace(ws.id)}
+              className={`px-2 py-0.5 rounded text-[10px] font-medium transition-all ${
+                activeWorkspace === ws.id
+                  ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {ws.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Center: Active Project Title */}

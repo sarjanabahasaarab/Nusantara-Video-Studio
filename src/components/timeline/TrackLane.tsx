@@ -33,6 +33,7 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
   const splitClipAtCurrentTime = useTimelineStore((s) => s.splitClipAtCurrentTime);
   const addClipToTrack = useTimelineStore((s) => s.addClipToTrack);
   const getAudioWaveform = useTimelineStore((s) => s.getAudioWaveform);
+  const updateClipAudio = useTimelineStore((s) => s.updateClipAudio);
 
   const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);
   const selectClip = useSelectionStore((s) => s.selectClip);
@@ -40,7 +41,8 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
   const activeTool = useSelectionStore((s) => s.activeTool);
   const notify = useUIStore((s) => s.notify);
 
-  const transitions = useProjectStore((s) => s.currentProject.timeline.transitions || []);
+  const rawTransitions = useProjectStore((s) => s.currentProject.timeline.transitions);
+  const transitions = rawTransitions || [];
   const addTransition = useProjectStore((s) => s.addTransition);
   const removeTransition = useProjectStore((s) => s.removeTransition);
   const updateTransition = useProjectStore((s) => s.updateTransition);
@@ -372,6 +374,46 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
     window.addEventListener('pointerup', onPointerUp);
   };
 
+  const handleFadeInPointerDown = (e: React.PointerEvent, clip: Clip) => {
+    e.stopPropagation();
+    const startX = e.clientX;
+    const initialFadeIn = clip.audio?.fadeIn || 0;
+
+    const onPointerMove = (me: PointerEvent) => {
+      const deltaSec = (me.clientX - startX) / zoom;
+      const newFade = Math.max(0, Math.min(clip.duration / 2, initialFadeIn + deltaSec));
+      updateClipAudio(clip.id, { fadeIn: parseFloat(newFade.toFixed(2)) });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  const handleFadeOutPointerDown = (e: React.PointerEvent, clip: Clip) => {
+    e.stopPropagation();
+    const startX = e.clientX;
+    const initialFadeOut = clip.audio?.fadeOut || 0;
+
+    const onPointerMove = (me: PointerEvent) => {
+      const deltaSec = (startX - me.clientX) / zoom;
+      const newFade = Math.max(0, Math.min(clip.duration / 2, initialFadeOut + deltaSec));
+      updateClipAudio(clip.id, { fadeOut: parseFloat(newFade.toFixed(2)) });
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
   const trackTransitions = transitions.filter((tr) => tr.trackId === track.id);
 
   return (
@@ -526,6 +568,52 @@ export const TrackLane: React.FC<TrackLaneProps> = ({ track, totalWidth, onClipC
                   <span>+KF</span>
                 </button>
               </div>
+            )}
+
+            {/* Visual Fade In Triangle Ramp (Requirement 23) */}
+            {isAudioClip && clip.audio?.fadeIn && clip.audio.fadeIn > 0 && (
+              <div
+                style={{ width: `${Math.min(width, clip.audio.fadeIn * zoom)}px` }}
+                className="absolute left-0 top-0 bottom-0 pointer-events-none z-15 overflow-hidden"
+              >
+                <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  <polygon points="0,0 100,0 0,100" fill="rgba(0,0,0,0.45)" />
+                  <line x1="0" y1="100" x2="100" y2="0" stroke="rgba(52,211,153,0.85)" strokeWidth="2.5" />
+                </svg>
+              </div>
+            )}
+
+            {/* Visual Fade Out Triangle Ramp (Requirement 23) */}
+            {isAudioClip && clip.audio?.fadeOut && clip.audio.fadeOut > 0 && (
+              <div
+                style={{ width: `${Math.min(width, clip.audio.fadeOut * zoom)}px` }}
+                className="absolute right-0 top-0 bottom-0 pointer-events-none z-15 overflow-hidden"
+              >
+                <svg className="w-full h-full" preserveAspectRatio="none" viewBox="0 0 100 100">
+                  <polygon points="0,0 100,0 100,100" fill="rgba(0,0,0,0.45)" />
+                  <line x1="0" y1="0" x2="100" y2="100" stroke="rgba(52,211,153,0.85)" strokeWidth="2.5" />
+                </svg>
+              </div>
+            )}
+
+            {/* Draggable Fade In Handle at Top Left */}
+            {isAudioClip && (
+              <div
+                onPointerDown={(e) => handleFadeInPointerDown(e, clip)}
+                style={{ left: `${Math.min(width - 8, (clip.audio?.fadeIn || 0) * zoom)}px` }}
+                className="absolute top-0 w-3.5 h-3.5 bg-emerald-400 hover:bg-emerald-300 border border-slate-900 rounded-bl-full cursor-ew-resize opacity-0 group-hover:opacity-100 z-35 transition-opacity shadow-xs"
+                title={`Fade In: ${(clip.audio?.fadeIn || 0).toFixed(1)}s (Drag untuk atur)`}
+              />
+            )}
+
+            {/* Draggable Fade Out Handle at Top Right */}
+            {isAudioClip && (
+              <div
+                onPointerDown={(e) => handleFadeOutPointerDown(e, clip)}
+                style={{ right: `${Math.min(width - 8, (clip.audio?.fadeOut || 0) * zoom)}px` }}
+                className="absolute top-0 w-3.5 h-3.5 bg-emerald-400 hover:bg-emerald-300 border border-slate-900 rounded-br-full cursor-ew-resize opacity-0 group-hover:opacity-100 z-35 transition-opacity shadow-xs"
+                title={`Fade Out: ${(clip.audio?.fadeOut || 0).toFixed(1)}s (Drag untuk atur)`}
+              />
             )}
 
             {/* Trim Left Interactive Handle (Requirement 11) */}

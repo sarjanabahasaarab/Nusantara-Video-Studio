@@ -755,6 +755,16 @@ export const PropertiesPanel: React.FC = () => {
                   onChange={(v) => updateClipAudio(selectedClip!.id, { pan: v })}
                 />
 
+                <SliderInput
+                  label="Audio Gain"
+                  value={audio.gain || 0}
+                  min={-24}
+                  max={24}
+                  step={0.5}
+                  unit="dB"
+                  onChange={(v) => updateClipAudio(selectedClip!.id, { gain: v })}
+                />
+
                 <div className="grid grid-cols-2 gap-2">
                   <SliderInput
                     label="Fade In"

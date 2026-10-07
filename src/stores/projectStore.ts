@@ -21,18 +21,18 @@ import {
   TimelineTransition,
   Track,
 } from '../types';
+import { ColorEngine } from '../engine/color/ColorEngine';
 
 /**
- * Migration helper from v1/v2 to v3 schema.
- * Phase 5: Preserves text clips, subtitle tracks, subtitle entries, caption settings,
- * graphic layers, font settings, animation keyframes, logo references, shape properties,
- * and safe area guide preferences.
+ * Migration helper from v1/v2/v3 to v4 schema.
+ * Phase 6: Preserves color grading, curves, wheels, LUT, audio mixer channels,
+ * master bus, 5-band EQ, compressor, limiter, audio keyframes, text clips, subtitle tracks.
  */
 export const migrateProject = (raw: any): Project => {
   if (!raw) return createDefaultProject();
 
   const project: Project = {
-    projectVersion: 3,
+    projectVersion: 4,
     id: raw.id || `nvs-proj-${Date.now()}`,
     name: raw.name || 'Migrated Project',
     createdAt: raw.createdAt || new Date().toISOString(),
@@ -57,6 +57,8 @@ export const migrateProject = (raw: any): Project => {
                   animatedProperties: c.animatedProperties || [],
                   effects: c.effects || [],
                   masks: c.masks || [],
+                  colorGrading: c.colorGrading,
+                  audioEffects: c.audioEffects,
                 }))
               : [],
           }))
@@ -513,6 +515,37 @@ export const createDemoProject = (): Project => {
       parameters: { intensity: 45, radius: 75 },
     },
   ];
+
+  // Phase 6 Color Grading on videoClip1
+  videoClip1.colorGrading = {
+    ...ColorEngine.getDefaultColorGrading(),
+    basic: {
+      exposure: 6,
+      contrast: 14,
+      highlights: -8,
+      shadows: 10,
+      whites: 4,
+      blacks: -4,
+      saturation: 18,
+      vibrance: 12,
+      temperature: 15,
+      tint: 4,
+      sharpness: 10,
+      clarity: 5,
+    },
+    wheels: {
+      shadows: { hue: 195, saturation: 20, luminance: -2 },
+      midtones: { hue: 42, saturation: 15, luminance: 3 },
+      highlights: { hue: 35, saturation: 22, luminance: 6 },
+    },
+    vignette: {
+      amount: -25,
+      size: 55,
+      feather: 60,
+      roundness: 0,
+      position: { x: 0, y: 0 },
+    },
+  };
 
   // Add demo PiP & Keyframes to imageClip1
   imageClip1.pip = {

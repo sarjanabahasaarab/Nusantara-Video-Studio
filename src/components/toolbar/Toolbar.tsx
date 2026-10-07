@@ -79,8 +79,8 @@ export const Toolbar: React.FC = () => {
   const currentProject = useProjectStore((s) => s.currentProject);
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
-  const canUndo = useProjectStore((s) => s.canUndo());
-  const canRedo = useProjectStore((s) => s.canRedo());
+  const canUndo = useProjectStore((s) => s.past.length > 0);
+  const canRedo = useProjectStore((s) => s.future.length > 0);
   const markSaved = useProjectStore((s) => s.markSaved);
 
   const selectedClipIds = useSelectionStore((s) => s.selectedClipIds);

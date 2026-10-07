@@ -38,6 +38,15 @@ const SUPPORTED_PROPERTIES: { id: string; label: string; defaultValue: number; m
   { id: 'brightness', label: 'Brightness', defaultValue: 100, min: 0, max: 200, step: 1, unit: '%' },
   { id: 'contrast', label: 'Contrast', defaultValue: 100, min: 0, max: 200, step: 1, unit: '%' },
   { id: 'saturation', label: 'Saturation', defaultValue: 100, min: 0, max: 250, step: 1, unit: '%' },
+  // Phase 6 Color Keyframing
+  { id: 'exposure', label: 'Color: Exposure', defaultValue: 0, min: -100, max: 100, step: 1, unit: '' },
+  { id: 'temperature', label: 'Color: Temperature', defaultValue: 0, min: -100, max: 100, step: 1, unit: '' },
+  { id: 'tint', label: 'Color: Tint', defaultValue: 0, min: -100, max: 100, step: 1, unit: '' },
+  { id: 'vignette', label: 'Color: Vignette', defaultValue: 0, min: -100, max: 100, step: 1, unit: '' },
+  { id: 'effectIntensity', label: 'LUT / FX Intensity', defaultValue: 100, min: 0, max: 100, step: 1, unit: '%' },
+  // Phase 6 Audio Automation
+  { id: 'pan', label: 'Audio: Pan', defaultValue: 0, min: -100, max: 100, step: 1, unit: '' },
+  { id: 'gain', label: 'Audio: Gain', defaultValue: 0, min: -24, max: 24, step: 0.5, unit: 'dB' },
 ];
 
 export const KeyframeInspector: React.FC<KeyframeInspectorProps> = ({

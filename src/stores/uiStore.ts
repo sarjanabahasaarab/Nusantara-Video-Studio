@@ -7,6 +7,9 @@ import { create } from 'zustand';
 import { AppNotification, NotificationType } from '../types';
 
 export type SidebarTab = 'media' | 'audio' | 'text' | 'transition' | 'effects' | 'filters';
+export type ActiveWorkspace = 'edit' | 'color' | 'audio';
+export type PreviewQuality = 'full' | 'half' | 'quarter' | 'draft';
+
 export type ActiveDialog =
   | 'newProject'
   | 'projectSettings'
@@ -17,11 +20,16 @@ export type ActiveDialog =
   | 'textGenerator'
   | 'phase4Test'
   | 'phase5Test'
+  | 'phase6Test'
   | 'subtitleEditor'
   | 'subtitleStudio'
   | null;
 
 interface UIState {
+  activeWorkspace: ActiveWorkspace;
+  previewQuality: PreviewQuality;
+  showScopes: boolean;
+  activeScopeType: 'histogram' | 'waveform' | 'vectorscope' | 'parade';
   sidebarOpen: boolean;
   activeSidebarTab: SidebarTab;
   sidebarWidth: number; // in pixels
@@ -32,6 +40,11 @@ interface UIState {
   notifications: AppNotification[];
 
   // Actions
+  setActiveWorkspace: (ws: ActiveWorkspace) => void;
+  setPreviewQuality: (q: PreviewQuality) => void;
+  setShowScopes: (show: boolean) => void;
+  toggleScopes: () => void;
+  setActiveScopeType: (t: 'histogram' | 'waveform' | 'vectorscope' | 'parade') => void;
   toggleSidebar: () => void;
   setSidebarOpen: (open: boolean) => void;
   setActiveSidebarTab: (tab: SidebarTab) => void;
@@ -48,6 +61,10 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
+  activeWorkspace: 'edit',
+  previewQuality: 'full',
+  showScopes: true,
+  activeScopeType: 'waveform',
   sidebarOpen: true,
   activeSidebarTab: 'media',
   sidebarWidth: 320,
@@ -56,6 +73,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   activeDialog: null,
   isFullscreen: false,
   notifications: [],
+
+  setActiveWorkspace: (ws) => set({ activeWorkspace: ws }),
+  setPreviewQuality: (q) => set({ previewQuality: q }),
+  setShowScopes: (show) => set({ showScopes: show }),
+  toggleScopes: () => set((state) => ({ showScopes: !state.showScopes })),
+  setActiveScopeType: (t) => set({ activeScopeType: t }),
 
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),

@@ -33,8 +33,8 @@ export const MenuBar: React.FC = () => {
   const currentProject = useProjectStore((s) => s.currentProject);
   const undo = useProjectStore((s) => s.undo);
   const redo = useProjectStore((s) => s.redo);
-  const canUndo = useProjectStore((s) => s.canUndo());
-  const canRedo = useProjectStore((s) => s.canRedo());
+  const canUndo = useProjectStore((s) => s.past.length > 0);
+  const canRedo = useProjectStore((s) => s.future.length > 0);
   const markSaved = useProjectStore((s) => s.markSaved);
 
   const zoomIn = useTimelineStore((s) => s.zoomIn);
@@ -60,6 +60,7 @@ export const MenuBar: React.FC = () => {
   const openDialog = useUIStore((s) => s.openDialog);
   const toggleFullscreen = useUIStore((s) => s.toggleFullscreen);
   const setActiveSidebarTab = useUIStore((s) => s.setActiveSidebarTab);
+  const setActiveWorkspace = useUIStore((s) => s.setActiveWorkspace);
   const notify = useUIStore((s) => s.notify);
 
   // Close menu on click outside
@@ -294,6 +295,28 @@ export const MenuBar: React.FC = () => {
       title: 'View',
       items: [
         {
+          label: 'Workspace: Editing',
+          action: () => {
+            setActiveWorkspace('edit');
+            notify('Workspace', 'Beralih ke Workspace Editing.', 'info', 1000);
+          },
+        },
+        {
+          label: 'Workspace: Color Studio',
+          action: () => {
+            setActiveWorkspace('color');
+            notify('Color Studio', 'Beralih ke Workspace Color Studio & Scopes.', 'info', 1000);
+          },
+        },
+        {
+          label: 'Workspace: Audio Studio',
+          action: () => {
+            setActiveWorkspace('audio');
+            notify('Audio Studio', 'Beralih ke Workspace Audio Studio & Mixer.', 'info', 1000);
+          },
+          divider: true,
+        },
+        {
           label: 'Media Tab',
           action: () => setActiveSidebarTab('media'),
         },
@@ -470,6 +493,20 @@ export const MenuBar: React.FC = () => {
       title: 'Tools',
       items: [
         {
+          label: 'Color Studio & Scopes...',
+          action: () => {
+            setActiveWorkspace('color');
+            notify('Color Studio', 'Membuka workspace Color Studio & Scopes.', 'info', 1500);
+          },
+        },
+        {
+          label: 'Audio Studio & Mixer...',
+          action: () => {
+            setActiveWorkspace('audio');
+            notify('Audio Studio', 'Membuka workspace Audio Studio & Mixer.', 'info', 1500);
+          },
+        },
+        {
           label: 'Text, Subtitles & Graphics Studio...',
           action: () => {
             setActiveSidebarTab('text');
@@ -547,6 +584,10 @@ export const MenuBar: React.FC = () => {
         {
           label: 'Keyboard Shortcuts',
           action: () => openDialog('shortcuts'),
+        },
+        {
+          label: 'Phase 6 Automated Test Suite (Color & Audio)...',
+          action: () => openDialog('phase6Test'),
         },
         {
           label: 'Phase 5 Automated Test Suite...',

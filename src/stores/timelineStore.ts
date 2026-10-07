@@ -12,7 +12,9 @@ import {
   Clip,
   ClipAppearance,
   ClipAudio,
+  ClipAudioEffects,
   ClipBasicEffects,
+  ClipColorGrading,
   ClipTextProperties,
   ClipTransform,
   LogoOverlayProperties,
@@ -96,6 +98,10 @@ export interface TimelineState {
   updateClipText: (clipId: string, textProps: Partial<ClipTextProperties>) => void;
   updateClipShape: (clipId: string, shapeProps: Partial<ShapeProperties>) => void;
   updateClipLogo: (clipId: string, logoProps: Partial<LogoOverlayProperties>) => void;
+  updateClipColorGrading: (clipId: string, colorGrading: Partial<ClipColorGrading>) => void;
+  updateClipAudioEffects: (clipId: string, audioEffects: Partial<ClipAudioEffects>) => void;
+  resetClipColor: (clipId: string) => void;
+  resetClipAudio: (clipId: string) => void;
   addShapeClip: (trackId?: string, shapeType?: ShapeType) => Clip;
   addLogoClip: (trackId?: string, mediaId?: string, logoUrl?: string) => Clip;
   addTextClip: (trackId?: string, textProps?: Partial<ClipTextProperties>, name?: string) => Clip;
@@ -834,6 +840,208 @@ export const useTimelineStore = create<TimelineState>((set, get) => ({
       }),
     }));
     projectStore.updateTracks(tracks);
+  },
+
+  updateClipColorGrading: (clipId, colorGrading) => {
+    const projectStore = useProjectStore.getState();
+    const tracks = projectStore.currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.colorGrading || {
+          enabled: true,
+          basic: {
+            exposure: 0,
+            contrast: 0,
+            highlights: 0,
+            shadows: 0,
+            whites: 0,
+            blacks: 0,
+            saturation: 0,
+            vibrance: 0,
+            temperature: 0,
+            tint: 0,
+            sharpness: 0,
+            clarity: 0,
+          },
+          hue: {
+            masterHueShift: 0,
+            channels: {
+              red: { hue: 0, saturation: 0, lightness: 0 },
+              orange: { hue: 0, saturation: 0, lightness: 0 },
+              yellow: { hue: 0, saturation: 0, lightness: 0 },
+              green: { hue: 0, saturation: 0, lightness: 0 },
+              cyan: { hue: 0, saturation: 0, lightness: 0 },
+              blue: { hue: 0, saturation: 0, lightness: 0 },
+              purple: { hue: 0, saturation: 0, lightness: 0 },
+              magenta: { hue: 0, saturation: 0, lightness: 0 },
+            },
+          },
+          curves: {
+            rgb: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+            red: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+            green: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+            blue: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+          },
+          wheels: {
+            shadows: { hue: 0, saturation: 0, luminance: 0 },
+            midtones: { hue: 0, saturation: 0, luminance: 0 },
+            highlights: { hue: 0, saturation: 0, luminance: 0 },
+          },
+          vignette: {
+            amount: 0,
+            size: 50,
+            feather: 50,
+            roundness: 0,
+            position: { x: 0, y: 0 },
+          },
+        };
+
+        return {
+          ...c,
+          colorGrading: {
+            ...current,
+            ...colorGrading,
+            basic: { ...current.basic, ...(colorGrading.basic || {}) },
+            hue: {
+              ...current.hue,
+              ...(colorGrading.hue || {}),
+              channels: {
+                ...current.hue.channels,
+                ...(colorGrading.hue?.channels || {}),
+              },
+            },
+            curves: { ...current.curves, ...(colorGrading.curves || {}) },
+            wheels: { ...current.wheels, ...(colorGrading.wheels || {}) },
+            vignette: { ...current.vignette, ...(colorGrading.vignette || {}) },
+          },
+        };
+      }),
+    }));
+    projectStore.updateTracks(tracks);
+  },
+
+  updateClipAudioEffects: (clipId, audioEffects) => {
+    const projectStore = useProjectStore.getState();
+    const tracks = projectStore.currentProject.timeline.tracks.map((t) => ({
+      ...t,
+      clips: t.clips.map((c) => {
+        if (c.id !== clipId) return c;
+        const current = c.audioEffects || {
+          eq: {
+            enabled: true,
+            bands: [
+              { id: 'low', name: 'Low (80 Hz)', type: 'lowshelf', frequency: 80, gain: 0, q: 0.71, enabled: true },
+              { id: 'low-mid', name: 'Low-Mid (250 Hz)', type: 'peaking', frequency: 250, gain: 0, q: 1.0, enabled: true },
+              { id: 'mid', name: 'Mid (1 kHz)', type: 'peaking', frequency: 1000, gain: 0, q: 1.0, enabled: true },
+              { id: 'high-mid', name: 'High-Mid (4 kHz)', type: 'peaking', frequency: 4000, gain: 0, q: 1.0, enabled: true },
+              { id: 'high', name: 'High (12 kHz)', type: 'highshelf', frequency: 12000, gain: 0, q: 0.71, enabled: true },
+            ],
+          },
+          compressor: {
+            enabled: false,
+            threshold: -18,
+            ratio: 3.5,
+            attack: 0.02,
+            release: 0.15,
+            knee: 6,
+            makeupGain: 2,
+          },
+          limiter: {
+            enabled: true,
+            ceiling: -0.1,
+            threshold: -1.0,
+            release: 0.05,
+          },
+          noiseReduction: {
+            enabled: false,
+            amount: 40,
+            sensitivity: 50,
+            smoothing: 60,
+            hasProfile: false,
+          },
+          normalization: {
+            enabled: false,
+            mode: 'peak',
+            targetLevel: -0.1,
+            calculatedGainOffset: 0,
+          },
+          effectOrder: ['eq', 'compressor', 'noise-reduction', 'limiter'],
+        };
+
+        return {
+          ...c,
+          audioEffects: {
+            ...current,
+            ...audioEffects,
+          },
+        };
+      }),
+    }));
+    projectStore.updateTracks(tracks);
+  },
+
+  resetClipColor: (clipId) => {
+    get().updateClipColorGrading(clipId, {
+      enabled: true,
+      basic: {
+        exposure: 0,
+        contrast: 0,
+        highlights: 0,
+        shadows: 0,
+        whites: 0,
+        blacks: 0,
+        saturation: 0,
+        vibrance: 0,
+        temperature: 0,
+        tint: 0,
+        sharpness: 0,
+        clarity: 0,
+      },
+      hue: {
+        masterHueShift: 0,
+        channels: {
+          red: { hue: 0, saturation: 0, lightness: 0 },
+          orange: { hue: 0, saturation: 0, lightness: 0 },
+          yellow: { hue: 0, saturation: 0, lightness: 0 },
+          green: { hue: 0, saturation: 0, lightness: 0 },
+          cyan: { hue: 0, saturation: 0, lightness: 0 },
+          blue: { hue: 0, saturation: 0, lightness: 0 },
+          purple: { hue: 0, saturation: 0, lightness: 0 },
+          magenta: { hue: 0, saturation: 0, lightness: 0 },
+        },
+      },
+      curves: {
+        rgb: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+        red: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+        green: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+        blue: [{ x: 0, y: 0 }, { x: 255, y: 255 }],
+      },
+      wheels: {
+        shadows: { hue: 0, saturation: 0, luminance: 0 },
+        midtones: { hue: 0, saturation: 0, luminance: 0 },
+        highlights: { hue: 0, saturation: 0, luminance: 0 },
+      },
+      vignette: {
+        amount: 0,
+        size: 50,
+        feather: 50,
+        roundness: 0,
+        position: { x: 0, y: 0 },
+      },
+      lut: undefined,
+    });
+  },
+
+  resetClipAudio: (clipId) => {
+    get().updateClipAudio(clipId, {
+      volume: 100,
+      pan: 0,
+      gain: 0,
+      mute: false,
+      fadeIn: 0,
+      fadeOut: 0,
+    });
   },
 
   addShapeClip: (trackId, shapeType = 'rectangle') => {

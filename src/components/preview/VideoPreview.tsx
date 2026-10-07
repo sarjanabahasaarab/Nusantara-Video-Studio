@@ -32,14 +32,15 @@ import { useMediaStore } from '../../stores/mediaStore';
 import { useGraphicsStore } from '../../stores/graphicsStore';
 import { useSubtitleStore } from '../../stores/subtitleStore';
 import { secondsToTimecode } from '../../utils/timecode';
-import { Clip } from '../../types';
+import { Clip, ClipColorGrading } from '../../types';
 import { KeyframeEngine } from '../../engine/keyframes/KeyframeEngine';
 import { EffectLibrary } from '../../engine/effects/EffectLibrary';
 import { MaskEngine } from '../../engine/masking/MaskEngine';
 import { ChromaKeyEngine } from '../../engine/chromakey/ChromaKeyEngine';
-import { TransitionEngine } from '../../engine/transitions/TransitionEngine';
 import { ShapeEngine } from '../../engine/graphics/ShapeEngine';
 import { TextAnimationEngine } from '../../engine/text/TextAnimationEngine';
+import { ColorEngine } from '../../engine/color/ColorEngine';
+import { TransitionEngine } from '../../engine/transitions/TransitionEngine';
 
 export const VideoPreview: React.FC = () => {
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -313,6 +314,7 @@ export const VideoPreview: React.FC = () => {
 
             // 1. Evaluate Keyframes at relative clip time
             const relTime = Math.max(0, currentTime - clip.startTime);
+            const colorGrading = clip.colorGrading;
             const defaultKfValues: Record<string, number> = {
               positionX: t.positionX || 0,
               positionY: t.positionY || 0,
@@ -324,12 +326,35 @@ export const VideoPreview: React.FC = () => {
               contrast: app.contrast ?? 100,
               saturation: app.saturation ?? 100,
               blur: fx.blur ?? 0,
+              // Color Grading Keyframes (Requirement 17)
+              exposure: colorGrading?.basic?.exposure ?? 0,
+              temperature: colorGrading?.basic?.temperature ?? 0,
+              tint: colorGrading?.basic?.tint ?? 0,
+              vignette: colorGrading?.vignette?.amount ?? 0,
+              effectIntensity: colorGrading?.lut?.intensity ?? 100,
             };
             const evalKf = KeyframeEngine.evaluateAllProperties(
               clip.animatedProperties,
               relTime,
               defaultKfValues
             );
+
+            // Dynamically combine color grading with evaluated keyframes
+            const activeColorGrading: ClipColorGrading | undefined = colorGrading ? {
+              ...colorGrading,
+              basic: {
+                ...colorGrading.basic,
+                exposure: evalKf.exposure ?? colorGrading.basic.exposure,
+                temperature: evalKf.temperature ?? colorGrading.basic.temperature,
+                tint: evalKf.tint ?? colorGrading.basic.tint,
+              },
+              vignette: {
+                ...colorGrading.vignette,
+                amount: evalKf.vignette ?? colorGrading.vignette.amount,
+              },
+            } : undefined;
+
+            const colorFilter = activeColorGrading ? ColorEngine.getCSSFilterString(activeColorGrading) : 'none';
 
             // 2. Picture-in-Picture (PiP) Settings & Presets
             let pipTransform = '';
@@ -383,6 +408,7 @@ export const VideoPreview: React.FC = () => {
               `grayscale(${fx.grayscale}%)`,
               `sepia(${fx.sepia}%)`,
               compiledFx.filter,
+              colorFilter !== 'none' ? colorFilter : '',
             ].filter(Boolean).join(' ');
 
             // 4. Vector Masking
@@ -606,7 +632,7 @@ export const VideoPreview: React.FC = () => {
                 ) : clip.type === 'image' ? (
                   <div className="relative max-w-md max-h-80 overflow-hidden rounded">
                     {mediaUrl ? (
-                      <img src={mediaUrl} alt={clip.name} className="w-full h-full object-contain" />
+                      <img id="video-preview-image" src={mediaUrl} alt={clip.name} className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-64 h-48 bg-gradient-to-tr from-purple-950 to-indigo-950 border border-purple-500/30 flex items-center justify-center text-purple-300 font-semibold text-xs">
                         {clip.name}
@@ -618,6 +644,7 @@ export const VideoPreview: React.FC = () => {
                   <div className="relative max-w-lg max-h-80 overflow-hidden rounded bg-black">
                     {mediaUrl && (mediaUrl.endsWith('.mp4') || mediaUrl.startsWith('blob:')) ? (
                       <video
+                        id="video-preview-element"
                         src={mediaUrl}
                         playsInline
                         muted
@@ -634,6 +661,17 @@ export const VideoPreview: React.FC = () => {
                       </div>
                     )}
                   </div>
+                )}
+
+                {/* Vignette Overlay (Requirement 12) */}
+                {activeColorGrading?.enabled && activeColorGrading.vignette && activeColorGrading.vignette.amount !== 0 && (
+                  <div
+                    style={{
+                      background: `radial-gradient(ellipse at ${50 + (activeColorGrading.vignette.position?.x || 0)}% ${50 + (activeColorGrading.vignette.position?.y || 0)}%, transparent ${activeColorGrading.vignette.size}%, rgba(0,0,0,${Math.abs(activeColorGrading.vignette.amount) / 100}) ${Math.min(100, activeColorGrading.vignette.size + activeColorGrading.vignette.feather)}%)`,
+                      mixBlendMode: activeColorGrading.vignette.amount < 0 ? 'multiply' : 'screen',
+                    }}
+                    className="absolute inset-0 pointer-events-none z-10"
+                  />
                 )}
                 </div>
 
