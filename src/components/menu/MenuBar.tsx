@@ -12,6 +12,7 @@ import { useMediaStore } from '../../stores/mediaStore';
 import { useCaptureStore } from '../../stores/captureStore';
 import { fileService } from '../../services/fileService';
 import { mediaService } from '../../services/mediaService';
+import { useWorkflowStore } from '../../stores/workflowStore';
 
 interface MenuItem {
   label: string;
@@ -145,6 +146,11 @@ export const MenuBar: React.FC = () => {
           },
         },
         {
+          label: 'Recent Projects...',
+          action: () => openDialog('recentProjects'),
+          divider: true,
+        },
+        {
           label: 'Save Project',
           shortcut: 'Ctrl+S',
           action: () => {
@@ -155,6 +161,7 @@ export const MenuBar: React.FC = () => {
         },
         {
           label: 'Save Project As...',
+          shortcut: 'Ctrl+Shift+S',
           action: () => {
             const customName = prompt('Nama file proyek:', currentProject.name);
             if (customName) {
@@ -163,6 +170,37 @@ export const MenuBar: React.FC = () => {
               notify('Simpan Proyek Sebagai', `Proyek berhasil disimpan sebagai "${customName}.nvproj".`, 'success');
             }
           },
+        },
+        {
+          label: 'Save Copy...',
+          action: () => {
+            const copyName = `${currentProject.name}_Copy`;
+            fileService.saveProjectToFile(currentProject, copyName);
+            notify('Simpan Salinan', `Salinan cadangan "${copyName}.nvproj" berhasil disimpan.`, 'success');
+          },
+        },
+        {
+          label: 'Close Project',
+          action: () => {
+            if (confirm('Tutup proyek aktif? Pastikan perubahan telah disimpan.')) {
+              openDialog('newProject');
+              notify('Proyek Ditutup', 'Proyek ditutup. Buka atau buat proyek baru.', 'info');
+            }
+          },
+          divider: true,
+        },
+        {
+          label: 'Project Metadata...',
+          action: () => openDialog('projectMetadata'),
+        },
+        {
+          label: 'Project Archive & Package...',
+          shortcut: 'Ctrl+Shift+A',
+          action: () => openDialog('projectArchive'),
+        },
+        {
+          label: 'Project Backup & Recovery...',
+          action: () => openDialog('projectBackup'),
           divider: true,
         },
         {
@@ -518,6 +556,13 @@ export const MenuBar: React.FC = () => {
           action: () => openDialog('subtitleStudio'),
         },
         {
+          label: 'AI-Assisted Editing Studio...',
+          action: () => {
+            setActiveWorkspace('ai');
+            notify('AI Workspace', 'Membuka studio AI-assisted editing.', 'info', 1500);
+          },
+        },
+        {
           label: 'Quick Text Generator...',
           action: () => openDialog('textGenerator'),
           divider: true,
@@ -536,6 +581,35 @@ export const MenuBar: React.FC = () => {
           divider: true,
         },
         {
+          label: 'Multicam Studio Preparation...',
+          action: () => openDialog('multicam'),
+        },
+        {
+          label: 'Timeline Markers Studio...',
+          shortcut: 'M',
+          action: () => openDialog('markers'),
+        },
+        {
+          label: 'Relink Offline Media...',
+          shortcut: 'Ctrl+R',
+          action: () => openDialog('relinkMediaWorkflow'),
+        },
+        {
+          label: 'Background Task Manager...',
+          action: () => openDialog('taskManager'),
+        },
+        {
+          label: 'Project Health & Optimization...',
+          shortcut: 'Ctrl+H',
+          action: () => openDialog('projectHealth'),
+        },
+        {
+          label: 'Command Palette...',
+          shortcut: 'Ctrl+Shift+P',
+          action: () => useWorkflowStore.getState().openCommandPalette(),
+          divider: true,
+        },
+        {
           label: 'Media Manager',
           action: () => {
             setActiveSidebarTab('media');
@@ -547,8 +621,63 @@ export const MenuBar: React.FC = () => {
           action: () => openDialog('settings'),
         },
         {
-          label: 'Keyboard Shortcuts',
-          action: () => openDialog('shortcuts'),
+          label: 'Keyboard Shortcuts Customizer...',
+          action: () => openDialog('keyboardCustomization'),
+        },
+      ],
+    },
+    {
+      title: 'Workspace',
+      items: [
+        {
+          label: 'Workspace: Editing',
+          shortcut: 'Alt+1',
+          action: () => {
+            setActiveWorkspace('edit');
+            notify('Workspace', 'Beralih ke Workspace: Editing.', 'info', 1000);
+          },
+        },
+        {
+          label: 'Workspace: Color Studio',
+          shortcut: 'Alt+2',
+          action: () => {
+            setActiveWorkspace('color');
+            notify('Workspace', 'Beralih ke Workspace: Color Studio.', 'info', 1000);
+          },
+        },
+        {
+          label: 'Workspace: Audio Studio',
+          shortcut: 'Alt+3',
+          action: () => {
+            setActiveWorkspace('audio');
+            notify('Workspace', 'Beralih ke Workspace: Audio Studio.', 'info', 1000);
+          },
+        },
+        {
+          label: 'Workspace: AI Studio',
+          shortcut: 'Alt+4',
+          action: () => {
+            setActiveWorkspace('ai');
+            notify('Workspace', 'Beralih ke Workspace: AI-Assisted Editing.', 'info', 1000);
+          },
+          divider: true,
+        },
+        {
+          label: 'Save Current Workspace Layout...',
+          action: () => {
+            const name = prompt('Nama Workspace Baru:', 'Custom Layout 1');
+            if (name) {
+              useWorkflowStore.getState().saveCurrentWorkspace(name);
+              notify('Workspace Disimpan', `Layout "${name}" berhasil disimpan.`, 'success');
+            }
+          },
+        },
+        {
+          label: 'Reset Workspace to Default',
+          action: () => {
+            setActiveWorkspace('edit');
+            notify('Workspace Direset', 'Tata letak workspace dikembalikan ke setelan awal.', 'info');
+          },
         },
       ],
     },
@@ -556,21 +685,23 @@ export const MenuBar: React.FC = () => {
       title: 'Export',
       items: [
         {
-          label: 'Export Subtitles (SRT / VTT)...',
-          action: () => openDialog('subtitleStudio'),
+          label: 'Export Video (MP4 / MOV / WebM)...',
+          shortcut: 'Ctrl+E',
+          action: () => openDialog('exportVideo'),
         },
         {
-          label: 'Export Video (MP4 / WebM / Pro)...',
-          action: () => comingSoon('Video Rendering & 4K Export Engine', 'Phase 9'),
+          label: 'Render Queue...',
+          shortcut: 'Ctrl+Shift+R',
+          action: () => openDialog('renderQueue'),
         },
         {
-          label: 'Export Audio (WAV / MP3)...',
-          action: () => comingSoon('Audio Studio & Export', 'Phase 8 & 9'),
+          label: 'Export History...',
+          action: () => openDialog('exportHistory'),
           divider: true,
         },
         {
-          label: 'Render Queue',
-          action: () => comingSoon('Background Render Queue', 'Phase 9'),
+          label: 'Export Subtitles (SRT / VTT)...',
+          action: () => openDialog('subtitleStudio'),
         },
       ],
     },
@@ -583,7 +714,19 @@ export const MenuBar: React.FC = () => {
         },
         {
           label: 'Keyboard Shortcuts',
-          action: () => openDialog('shortcuts'),
+          action: () => openDialog('keyboardCustomization'),
+        },
+        {
+          label: 'Phase 9 Automated Test Suite (Rendering & Export Engine)...',
+          action: () => openDialog('phase9Test'),
+        },
+        {
+          label: 'Phase 8 Automated Test Suite (Professional Editing Workflow)...',
+          action: () => openDialog('phase8Test'),
+        },
+        {
+          label: 'Phase 7 Automated Test Suite (AI-Assisted Editing)...',
+          action: () => openDialog('phase7Test'),
         },
         {
           label: 'Phase 6 Automated Test Suite (Color & Audio)...',

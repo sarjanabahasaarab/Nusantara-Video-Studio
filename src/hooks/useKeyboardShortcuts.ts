@@ -95,6 +95,13 @@ export function useKeyboardShortcuts() {
         return;
       }
 
+      // Ctrl + E -> Export Video (Phase 9)
+      if (isCtrlOrCmd && !e.shiftKey && (e.key === 'e' || e.key === 'E')) {
+        e.preventDefault();
+        openDialog('exportVideo');
+        return;
+      }
+
       // Ctrl + I -> Import Media
       if (isCtrlOrCmd && !e.shiftKey && (e.key === 'i' || e.key === 'I')) {
         e.preventDefault();

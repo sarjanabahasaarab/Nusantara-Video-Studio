@@ -25,11 +25,18 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Tv,
+  Bookmark,
+  Activity,
+  Command,
+  Download,
+  ListOrdered,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { useTimelineStore } from '../../stores/timelineStore';
 import { useSelectionStore } from '../../stores/selectionStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useWorkflowStore } from '../../stores/workflowStore';
 import { useMediaStore } from '../../stores/mediaStore';
 import { useCaptureStore } from '../../stores/captureStore';
 import { fileService } from '../../services/fileService';
@@ -97,6 +104,12 @@ export const Toolbar: React.FC = () => {
   const notify = useUIStore((s) => s.notify);
 
   const openCaptureModal = useCaptureStore((s) => s.openModal);
+
+  const proxyEnabled = useWorkflowStore((s) => s.proxyEnabled);
+  const toggleProxy = useWorkflowStore((s) => s.toggleProxy);
+  const openCommandPalette = useWorkflowStore((s) => s.openCommandPalette);
+  const backgroundTasks = useWorkflowStore((s) => s.backgroundTasks);
+  const runningTaskCount = backgroundTasks.filter((t) => t.status === 'running').length;
 
   const handleImportMedia = async () => {
     setActiveSidebarTab('media');
@@ -292,6 +305,60 @@ export const Toolbar: React.FC = () => {
           tooltip="Fit Timeline to Window"
           onClick={() => zoomToFit(1000)}
         />
+
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
+
+        {/* Group 7: Phase 8 Workflow & Engine */}
+        <ToolbarButton
+          icon={<Tv className={`w-3.5 h-3.5 ${proxyEnabled ? 'text-emerald-400' : 'text-slate-400'}`} />}
+          label={proxyEnabled ? 'Proxy: ON' : 'Proxy: OFF'}
+          tooltip="Toggle Proxy Media Playback (P)"
+          highlight={proxyEnabled}
+          onClick={toggleProxy}
+        />
+        <ToolbarButton
+          icon={<Bookmark className="w-3.5 h-3.5 text-blue-400" />}
+          label="Markers"
+          tooltip="Timeline Markers Studio (M)"
+          onClick={() => openDialog('markers')}
+        />
+        <ToolbarButton
+          icon={
+            <Activity
+              className={`w-3.5 h-3.5 ${
+                runningTaskCount > 0 ? 'text-blue-400 animate-spin' : 'text-slate-400'
+              }`}
+            />
+          }
+          label={runningTaskCount > 0 ? `${runningTaskCount} Task` : 'Tasks'}
+          tooltip="Background Task Manager"
+          highlight={runningTaskCount > 0}
+          onClick={() => openDialog('taskManager')}
+        />
+        <ToolbarButton
+          icon={<Command className="w-3.5 h-3.5 text-indigo-400" />}
+          label="Palette"
+          tooltip="Command Palette (Ctrl+Shift+P)"
+          onClick={openCommandPalette}
+        />
+
+        <div className="h-4 w-px bg-[#262c3a] mx-0.5" />
+
+        {/* Group 8: Phase 9 Professional Rendering & Export Engine */}
+        <ToolbarButton
+          icon={<ListOrdered className="w-3.5 h-3.5 text-blue-400" />}
+          label="Queue"
+          tooltip="Antrean Render (Render Queue)"
+          onClick={() => openDialog('renderQueue')}
+        />
+        <button
+          onClick={() => openDialog('exportVideo')}
+          className="flex items-center gap-1.5 px-3 py-1 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition shadow-md shadow-blue-600/30 ml-1"
+          title="Ekspor Video (Ctrl+E)"
+        >
+          <Download className="w-3.5 h-3.5 fill-white" />
+          <span>Export</span>
+        </button>
       </div>
     </div>
   );

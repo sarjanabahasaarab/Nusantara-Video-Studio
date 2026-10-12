@@ -26,18 +26,25 @@ import {
   Link,
   Edit2,
   Sparkles,
+  Tv,
 } from 'lucide-react';
 import { useMediaStore } from '../../stores/mediaStore';
 import { useUIStore } from '../../stores/uiStore';
+import { useWorkflowStore } from '../../stores/workflowStore';
 import { mediaService } from '../../services/mediaService';
 import { formatBytes, formatDuration } from '../../utils/timecode';
 import { MediaFilterType, MediaItem, MediaSortField } from '../../types';
+import { BinManagerPanel } from '../workflow/BinManagerPanel';
 
 export const MediaLibrary: React.FC = () => {
   const items = useMediaStore((s) => s.items);
   const getMedia = useMediaStore((s) => s.getMedia);
   const selectedMediaId = useMediaStore((s) => s.selectedMediaId);
   const selectMedia = useMediaStore((s) => s.selectMedia);
+  const activeBinId = useWorkflowStore((s) => s.activeBinId);
+  const generateProxyForMedia = useWorkflowStore((s) => s.generateProxyForMedia);
+  const bins = useWorkflowStore((s) => s.bins);
+  const moveMediaToBin = useWorkflowStore((s) => s.moveMediaToBin);
   const removeMedia = useMediaStore((s) => s.removeMedia);
   const searchQuery = useMediaStore((s) => s.searchQuery);
   const filterType = useMediaStore((s) => s.filterType);
@@ -55,6 +62,7 @@ export const MediaLibrary: React.FC = () => {
   const loadStoredMedia = useMediaStore((s) => s.loadStoredMedia);
 
   const notify = useUIStore((s) => s.notify);
+  const openDialog = useUIStore((s) => s.openDialog);
 
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -233,11 +241,17 @@ export const MediaLibrary: React.FC = () => {
     setRelinkTarget(item);
   };
 
-  const handlePropertiesAction = (item: MediaItem) => {
-    setPropertiesMedia(item);
+  const handlePropertiesAction = (_item: MediaItem) => {
+    openDialog('projectMetadata');
+    setContextMenu({ visible: false, x: 0, y: 0, item: null });
   };
 
-  const filteredMedia = getMedia();
+  const baseFilteredMedia = getMedia();
+  const filteredMedia = activeBinId
+    ? baseFilteredMedia.filter(
+        (m) => m.binId === activeBinId || bins.find((b) => b.id === activeBinId)?.mediaIds.includes(m.id)
+      )
+    : baseFilteredMedia;
 
   // Category counts
   const countAll = items.length;
@@ -352,6 +366,9 @@ export const MediaLibrary: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Project Bins Panel */}
+        <BinManagerPanel />
 
         {/* Real-time Search Box */}
         <div className="relative flex items-center">
@@ -637,6 +654,20 @@ export const MediaLibrary: React.FC = () => {
           >
             <Link className="w-3.5 h-3.5" />
             <span>Relink Media</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (contextMenu.item) {
+                generateProxyForMedia(contextMenu.item.id);
+                notify('Proxy Didaftarkan', `Membuat proxy untuk "${contextMenu.item.name}"...`, 'info', 2000);
+                setContextMenu({ visible: false, x: 0, y: 0, item: null });
+              }
+            }}
+            className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-blue-300 hover:bg-blue-600/20 hover:text-blue-200 transition-colors"
+          >
+            <Tv className="w-3.5 h-3.5" />
+            <span>Create Proxy</span>
           </button>
 
           <button

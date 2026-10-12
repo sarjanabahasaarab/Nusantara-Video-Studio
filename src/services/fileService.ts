@@ -11,9 +11,13 @@ export class FileService {
    * Phase 6: Full serialization of color grading (basic, curves, wheels, HSL, LUT, vignette),
    * audio mixer channels, master bus, 5-band EQ, compressor, limiter, and audio keyframes.
    */
+  /**
+   * Serializes project to formatted JSON string (.nvproj format)
+   * Phase 8: Full serialization including bins, multicam, proxy settings, and extended metadata.
+   */
   serializeProject(project: Project): string {
     const filePayload = {
-      projectVersion: 4,
+      projectVersion: project.projectVersion || 6,
       id: project.id,
       name: project.name,
       createdAt: project.createdAt,
@@ -21,10 +25,15 @@ export class FileService {
       settings: project.settings,
       media: project.media,
       timeline: project.timeline,
+      aiMetadata: project.aiMetadata,
+      bins: project.bins,
+      multicamGroups: project.multicamGroups,
+      proxySettings: project.proxySettings,
+      projectMetadata: project.projectMetadata,
       metadata: {
-        appVersion: '0.6.0',
+        appVersion: '0.8.0',
         appName: 'Nusantara Video Studio',
-        lastSavedBy: 'Nusantara Video Studio v0.6.0',
+        lastSavedBy: 'Nusantara Video Studio v0.8.0',
       },
     };
 
@@ -32,7 +41,17 @@ export class FileService {
   }
 
   /**
-   * Validates and parses a string as a valid .nvproj Project object (supports v1, v2, v3, and v4)
+   * Validates project object against schema specifications
+   */
+  validateProjectSchema(projectObj: any): boolean {
+    if (!projectObj || typeof projectObj !== 'object') return false;
+    if (![1, 2, 3, 4, 5, 6].includes(projectObj.projectVersion)) return false;
+    if (!projectObj.name || !projectObj.settings || !projectObj.timeline) return false;
+    return true;
+  }
+
+  /**
+   * Validates and parses a string as a valid .nvproj Project object (supports v1 to v6)
    */
   parseProject(jsonString: string): { valid: boolean; project?: Project; error?: string } {
     try {
@@ -46,11 +65,13 @@ export class FileService {
         parsed.projectVersion !== 1 &&
         parsed.projectVersion !== 2 &&
         parsed.projectVersion !== 3 &&
-        parsed.projectVersion !== 4
+        parsed.projectVersion !== 4 &&
+        parsed.projectVersion !== 5 &&
+        parsed.projectVersion !== 6
       ) {
         return {
           valid: false,
-          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1, 2, 3, or 4.`,
+          error: `Unsupported project version: ${parsed.projectVersion}. Expected version 1 to 6.`,
         };
       }
 

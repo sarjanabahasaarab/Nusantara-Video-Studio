@@ -43,7 +43,7 @@ export const TitleBar: React.FC = () => {
           Nusantara Video Studio
         </span>
         <span className="text-[9px] font-mono text-blue-400 bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">
-          v0.6.0
+          v0.7.0
         </span>
 
         {/* Workspace Switcher Tabs */}
@@ -53,6 +53,7 @@ export const TitleBar: React.FC = () => {
               { id: 'edit', label: 'Editing' },
               { id: 'color', label: 'Color' },
               { id: 'audio', label: 'Audio' },
+              { id: 'ai', label: 'AI' },
             ] as const
           ).map((ws) => (
             <button

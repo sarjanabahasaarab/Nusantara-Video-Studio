@@ -7,7 +7,7 @@ import { create } from 'zustand';
 import { AppNotification, NotificationType } from '../types';
 
 export type SidebarTab = 'media' | 'audio' | 'text' | 'transition' | 'effects' | 'filters';
-export type ActiveWorkspace = 'edit' | 'color' | 'audio';
+export type ActiveWorkspace = 'edit' | 'color' | 'audio' | 'ai';
 export type PreviewQuality = 'full' | 'half' | 'quarter' | 'draft';
 
 export type ActiveDialog =
@@ -21,8 +21,27 @@ export type ActiveDialog =
   | 'phase4Test'
   | 'phase5Test'
   | 'phase6Test'
+  | 'phase7Test'
+  | 'phase8Test'
   | 'subtitleEditor'
   | 'subtitleStudio'
+  | 'recentProjects'
+  | 'projectArchive'
+  | 'projectBackup'
+  | 'projectMetadata'
+  | 'relinkMedia'
+  | 'relinkMediaWorkflow'
+  | 'multicam'
+  | 'keyboardCustomization'
+  | 'taskManager'
+  | 'projectHealth'
+  | 'markers'
+  | 'exportVideo'
+  | 'renderQueue'
+  | 'exportHistory'
+  | 'exportDetails'
+  | 'renderLogs'
+  | 'phase9Test'
   | null;
 
 interface UIState {

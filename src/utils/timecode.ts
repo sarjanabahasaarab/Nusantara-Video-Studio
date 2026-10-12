@@ -23,6 +23,8 @@ export function secondsToTimecode(totalSeconds: number, fps: FrameRate = 30): st
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}:${pad(frames)}`;
 }
 
+export const formatTimecode = secondsToTimecode;
+
 /**
  * Converts SMPTE Timecode HH:MM:SS:FF back to seconds
  */

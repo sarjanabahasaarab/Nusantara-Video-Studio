@@ -32,6 +32,28 @@ import { TextGeneratorModal } from './components/text/TextGeneratorModal';
 import { SubtitleEditorModal } from './components/subtitles/SubtitleEditorModal';
 import { Phase5TestModal } from './components/dialogs/Phase5TestModal';
 import { Phase6TestModal } from './components/dialogs/Phase6TestModal';
+import { Phase7TestModal } from './components/dialogs/Phase7TestModal';
+import { Phase8TestModal } from './components/dialogs/Phase8TestModal';
+
+import { RecentProjectsModal } from './components/workflow/RecentProjectsModal';
+import { ProjectArchiveModal } from './components/workflow/ProjectArchiveModal';
+import { ProjectBackupModal } from './components/workflow/ProjectBackupModal';
+import { ProjectMetadataModal } from './components/workflow/ProjectMetadataModal';
+import { RelinkMediaWorkflowModal } from './components/workflow/RelinkMediaWorkflowModal';
+import { MulticamModal } from './components/workflow/MulticamModal';
+import { KeyboardCustomizationModal } from './components/workflow/KeyboardCustomizationModal';
+import { TaskManagerModal } from './components/workflow/TaskManagerModal';
+import { ProjectHealthModal } from './components/workflow/ProjectHealthModal';
+import { MarkersModal } from './components/workflow/MarkersModal';
+import { CommandPaletteModal } from './components/workflow/CommandPaletteModal';
+
+import { ExportDialog } from './components/render/ExportDialog';
+import { RenderQueueModal } from './components/render/RenderQueueModal';
+import { ExportDetailsModal } from './components/render/ExportDetailsModal';
+import { RenderLogModal } from './components/render/RenderLogModal';
+import { ExportHistoryModal } from './components/render/ExportHistoryModal';
+import { Phase9TestModal } from './components/dialogs/Phase9TestModal';
+import { RenderJob } from './types/render';
 
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useAutoSave } from './hooks/useAutoSave';
@@ -49,13 +71,17 @@ export default function App() {
 
   const activeDialog = useUIStore((s) => s.activeDialog);
   const closeDialog = useUIStore((s) => s.closeDialog);
+  const openDialog = useUIStore((s) => s.openDialog);
+
+  const [inspectedJob, setInspectedJob] = React.useState<RenderJob | null>(null);
+  const [inspectedLogJobId, setInspectedLogJobId] = React.useState<string | null>(null);
 
   // Initialize Database Service
   useEffect(() => {
     databaseService.initialize().then(() => {
       notify(
-        'Nusantara Video Studio v0.6.0',
-        'Phase 6: Professional Color & Audio Studio aktif. Color Grading, Curves, Wheels, LUT, Scopes, 5-Band Parametric EQ, Audio Mixer & Master Limiter siap digunakan.',
+        'Nusantara Video Studio v0.8.0',
+        'Phase 8: Professional Editing Workflow aktif. Proxy Media, Relink Heuristik, Project Archive, Bins, Markers, Multicam, Autosave & Health Check siap digunakan.',
         'info',
         4000
       );
@@ -114,6 +140,93 @@ export default function App() {
       />
       <Phase6TestModal
         isOpen={activeDialog === 'phase6Test'}
+        onClose={closeDialog}
+      />
+      <Phase7TestModal
+        isOpen={activeDialog === 'phase7Test'}
+        onClose={closeDialog}
+      />
+      <Phase8TestModal
+        isOpen={activeDialog === 'phase8Test'}
+        onClose={closeDialog}
+      />
+
+      {/* Phase 8 Professional Editing Workflow Modals */}
+      <RecentProjectsModal
+        isOpen={activeDialog === 'recentProjects'}
+        onClose={closeDialog}
+      />
+      <ProjectArchiveModal
+        isOpen={activeDialog === 'projectArchive'}
+        onClose={closeDialog}
+      />
+      <ProjectBackupModal
+        isOpen={activeDialog === 'projectBackup'}
+        onClose={closeDialog}
+      />
+      <ProjectMetadataModal
+        isOpen={activeDialog === 'projectMetadata'}
+        onClose={closeDialog}
+      />
+      <RelinkMediaWorkflowModal
+        isOpen={activeDialog === 'relinkMediaWorkflow'}
+        onClose={closeDialog}
+      />
+      <MulticamModal
+        isOpen={activeDialog === 'multicam'}
+        onClose={closeDialog}
+      />
+      <KeyboardCustomizationModal
+        isOpen={activeDialog === 'keyboardCustomization'}
+        onClose={closeDialog}
+      />
+      <TaskManagerModal
+        isOpen={activeDialog === 'taskManager'}
+        onClose={closeDialog}
+      />
+      <ProjectHealthModal
+        isOpen={activeDialog === 'projectHealth'}
+        onClose={closeDialog}
+      />
+      <MarkersModal
+        isOpen={activeDialog === 'markers'}
+        onClose={closeDialog}
+      />
+      <CommandPaletteModal />
+
+      {/* Phase 9 Professional Rendering & Export Engine Modals */}
+      <ExportDialog
+        isOpen={activeDialog === 'exportVideo'}
+        onClose={closeDialog}
+      />
+      <RenderQueueModal
+        isOpen={activeDialog === 'renderQueue'}
+        onClose={closeDialog}
+        onOpenDetails={(j) => {
+          setInspectedJob(j);
+          openDialog('exportDetails');
+        }}
+        onOpenLogs={(jId) => {
+          setInspectedLogJobId(jId);
+          openDialog('renderLogs');
+        }}
+      />
+      <ExportDetailsModal
+        isOpen={activeDialog === 'exportDetails'}
+        onClose={closeDialog}
+        job={inspectedJob}
+      />
+      <RenderLogModal
+        isOpen={activeDialog === 'renderLogs'}
+        onClose={closeDialog}
+        jobId={inspectedLogJobId}
+      />
+      <ExportHistoryModal
+        isOpen={activeDialog === 'exportHistory'}
+        onClose={closeDialog}
+      />
+      <Phase9TestModal
+        isOpen={activeDialog === 'phase9Test'}
         onClose={closeDialog}
       />
 

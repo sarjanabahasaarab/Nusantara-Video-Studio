@@ -7,11 +7,13 @@ import React, { useState } from 'react';
 import { Modal } from '../common/Modal';
 import { useUIStore } from '../../stores/uiStore';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useAIStore } from '../../stores/aiStore';
 import { RESOLUTION_PRESETS, FRAME_RATES, ASPECT_RATIOS } from '../../utils/presets';
 import { AspectRatio, FrameRate, ResolutionPreset } from '../../types';
-import { Sliders, Monitor, Cpu, Keyboard, Check } from 'lucide-react';
+import { Sliders, Monitor, Cpu, Keyboard, Check, Tv } from 'lucide-react';
+import { useWorkflowStore } from '../../stores/workflowStore';
 
-type SettingsTab = 'general' | 'project' | 'performance' | 'keyboard';
+type SettingsTab = 'general' | 'project' | 'performance' | 'keyboard' | 'ai' | 'proxy';
 
 export const SettingsDialog: React.FC = () => {
   const activeDialog = useUIStore((s) => s.activeDialog);
@@ -81,6 +83,28 @@ export const SettingsDialog: React.FC = () => {
           >
             <Keyboard className="w-3.5 h-3.5" />
             <span>Keyboard</span>
+          </button>
+          <button
+            onClick={() => setCurrentTab('ai')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors ${
+              currentTab === 'ai'
+                ? 'bg-blue-600/20 text-blue-400 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d28]'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5 text-purple-400" />
+            <span>AI & Privacy</span>
+          </button>
+          <button
+            onClick={() => setCurrentTab('proxy')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-left transition-colors ${
+              currentTab === 'proxy'
+                ? 'bg-blue-600/20 text-blue-400 font-semibold'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#181d28]'
+            }`}
+          >
+            <Tv className="w-3.5 h-3.5 text-blue-400" />
+            <span>Proxy Media</span>
           </button>
         </div>
 
@@ -332,6 +356,9 @@ export const SettingsDialog: React.FC = () => {
               </div>
             </div>
           )}
+
+          {currentTab === 'ai' && <AISettingsTabContent />}
+          {currentTab === 'proxy' && <ProxySettingsTabContent />}
         </div>
       </div>
 
@@ -348,5 +375,239 @@ export const SettingsDialog: React.FC = () => {
         </button>
       </div>
     </Modal>
+  );
+};
+
+const AISettingsTabContent: React.FC = () => {
+  const settings = useAIStore((s) => s.settings);
+  const updateSettings = useAIStore((s) => s.updateSettings);
+
+  return (
+    <div className="flex flex-col gap-4 text-xs">
+      {/* Provider Selector */}
+      <div>
+        <label className="block text-[11px] font-semibold text-slate-300 mb-1.5">
+          AI Provider
+        </label>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => updateSettings({ preferredProvider: 'local' })}
+            className={`p-2.5 rounded-lg border text-left transition-all ${
+              settings.preferredProvider === 'local'
+                ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
+                : 'bg-[#10131c] border-[#22293b] text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="font-semibold text-xs">Local AI</div>
+            <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+              Your media remains on this computer.
+            </div>
+          </button>
+
+          <button
+            onClick={() => updateSettings({ preferredProvider: 'cloud' })}
+            className={`p-2.5 rounded-lg border text-left transition-all ${
+              settings.preferredProvider === 'cloud'
+                ? 'bg-blue-600/20 border-blue-500 text-white font-semibold'
+                : 'bg-[#10131c] border-[#22293b] text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <div className="font-semibold text-xs">Cloud AI</div>
+            <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+              Selected media may be uploaded to an external AI provider.
+            </div>
+          </button>
+        </div>
+      </div>
+
+      {/* Privacy Section (Requirement 6) */}
+      <div className="p-3 bg-[#11141d] border border-[#202738] rounded-xl space-y-2.5">
+        <div className="text-[11px] font-semibold text-slate-200 uppercase tracking-wider">
+          Privacy
+        </div>
+
+        <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings.privacy.allowCloudProcessing}
+            onChange={(e) =>
+              updateSettings({
+                privacy: { ...settings.privacy, allowCloudProcessing: e.target.checked },
+              })
+            }
+            className="rounded mt-0.5 accent-blue-500"
+          />
+          <div>
+            <div className="font-medium">Allow cloud processing</div>
+            <div className="text-[10px] text-slate-500">
+              Default: OFF. Wajib persetujuan eksplisit untuk memproses data di cloud.
+            </div>
+          </div>
+        </label>
+
+        <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings.privacy.sendMediaToExternal}
+            onChange={(e) =>
+              updateSettings({
+                privacy: { ...settings.privacy, sendMediaToExternal: e.target.checked },
+              })
+            }
+            className="rounded mt-0.5 accent-blue-500"
+          />
+          <div>
+            <div className="font-medium">Send media to external AI providers</div>
+            <div className="text-[10px] text-slate-500">
+              Default: OFF. Jangan mengirim file ke layanan eksternal tanpa persetujuan.
+            </div>
+          </div>
+        </label>
+
+        <label className="flex items-start gap-2 text-slate-300 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={settings.privacy.autoProcessImported}
+            onChange={(e) =>
+              updateSettings({
+                privacy: { ...settings.privacy, autoProcessImported: e.target.checked },
+              })
+            }
+            className="rounded mt-0.5 accent-blue-500"
+          />
+          <div>
+            <div className="font-medium">Automatically process imported media</div>
+            <div className="text-[10px] text-slate-500">
+              Default: OFF. Otomatisasi pemindaian scene/silence saat import.
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {/* Local Whisper Config */}
+      <div>
+        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+          Whisper Model Size (Local)
+        </label>
+        <select
+          value={settings.whisper.modelSize}
+          onChange={(e) =>
+            updateSettings({
+              whisper: { ...settings.whisper, modelSize: e.target.value as any },
+            })
+          }
+          className="w-full bg-[#0d0f14] border border-[#272e3d] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+        >
+          <option value="tiny">Tiny (39 MB - Cepat, RAM Rendah)</option>
+          <option value="base">Base (74 MB - Standar Seimbang)</option>
+          <option value="small">Small (244 MB - Akurasi Lebih Baik)</option>
+          <option value="medium">Medium (769 MB - Akurasi Tinggi)</option>
+        </select>
+      </div>
+    </div>
+  );
+};
+
+const ProxySettingsTabContent: React.FC = () => {
+  const proxySettings = useWorkflowStore((s) => s.proxySettings);
+  const updateProxySettings = useWorkflowStore((s) => s.updateProxySettings);
+  const proxyEnabled = useWorkflowStore((s) => s.proxyEnabled);
+  const setProxyEnabled = useWorkflowStore((s) => s.setProxyEnabled);
+
+  return (
+    <div className="flex flex-col gap-4 text-xs">
+      {/* Proxy Enable Toggle */}
+      <div className="flex items-center justify-between p-3 rounded-lg bg-[#141722] border border-[#232938]">
+        <div>
+          <div className="font-semibold text-slate-200">Enable Proxy Editing</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Gunakan video proxy beresolusi rendah untuk editing lancar tanpa lag
+          </div>
+        </div>
+        <input
+          type="checkbox"
+          checked={proxyEnabled}
+          onChange={(e) => setProxyEnabled(e.target.checked)}
+          className="w-4 h-4 rounded accent-blue-500 cursor-pointer"
+        />
+      </div>
+
+      {/* Proxy Resolution */}
+      <div>
+        <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+          Proxy Resolution (Resolusi Media Proxy)
+        </label>
+        <select
+          value={proxySettings.resolution}
+          onChange={(e) => updateProxySettings({ resolution: e.target.value as any })}
+          className="w-full bg-[#0d0f14] border border-[#272e3d] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+        >
+          <option value="540p">540p (960×540 - Direkomendasikan untuk editing responsif)</option>
+          <option value="720p">720p (1280×720 - Kualitas tinggi)</option>
+          <option value="half">Half Resolution (50% dari ukuran asli)</option>
+          <option value="quarter">Quarter Resolution (25% dari ukuran asli)</option>
+          <option value="original">Original (Sama dengan resolusi video mentah)</option>
+        </select>
+      </div>
+
+      {/* Proxy Format & Quality */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+            Proxy Format
+          </label>
+          <select
+            value={proxySettings.format}
+            onChange={(e) => updateProxySettings({ format: e.target.value as any })}
+            className="w-full bg-[#0d0f14] border border-[#272e3d] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+          >
+            <option value="mp4">MP4 (H.264 / AAC)</option>
+            <option value="webm">WebM (VP9 / Opus)</option>
+            <option value="prores-proxy">Apple ProRes Proxy</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+            Proxy Quality
+          </label>
+          <select
+            value={proxySettings.quality}
+            onChange={(e) => updateProxySettings({ quality: e.target.value as any })}
+            className="w-full bg-[#0d0f14] border border-[#272e3d] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500"
+          >
+            <option value="draft">Draft (Kompresi cepat, file kecil)</option>
+            <option value="standard">Standard (Keseimbangan optimal)</option>
+            <option value="high">High (Detail visual tinggi)</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Auto Generate on Import */}
+      <div className="p-3 rounded-lg bg-[#141722] border border-[#232938]">
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={proxySettings.autoGenerateOnImport}
+            onChange={(e) => updateProxySettings({ autoGenerateOnImport: e.target.checked })}
+            className="rounded mt-0.5 accent-blue-500"
+          />
+          <div>
+            <div className="font-medium text-slate-200">Auto Generate Proxy on Import</div>
+            <div className="text-[10px] text-slate-400 mt-0.5">
+              Otomatis buat file proxy di latar belakang setiap kali video diimpor ke project
+            </div>
+          </div>
+        </label>
+      </div>
+
+      {/* Export Policy Notice */}
+      <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[11px] text-blue-300 space-y-1">
+        <span className="font-semibold">Aturan Export Profesional (Requirement 12):</span>
+        <p className="text-slate-400">
+          Saat render final/ekspor, sistem akan selalu menggunakan media asli original untuk kualitas prima, kecuali jika original offline dan pengguna memilih menggunakan proxy.
+        </p>
+      </div>
+    </div>
   );
 };

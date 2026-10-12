@@ -86,10 +86,18 @@ export interface MediaItem {
   thumbnail?: string;
   isOffline?: boolean;
   blobUrl?: string;
+  url?: string;
   lastModified?: number;
   createdAt: string;
   updatedAt?: string;
   metadata?: MediaMetadata;
+
+  // Phase 8 Workflow & Proxy
+  proxy?: import('./workflow').ProxyMediaInfo;
+  binId?: string | null;
+  hash?: string;
+  relativePath?: string;
+  status?: import('./workflow').MediaStatus;
 }
 
 export interface ClipTransform {
@@ -263,6 +271,7 @@ export interface SubtitleItem {
   endTime: number; // in seconds
   text: string;
   style?: Partial<ClipTextProperties>;
+  speaker?: string;
 }
 
 export interface SubtitleTrack {
@@ -512,6 +521,9 @@ export interface BaseClip {
   colorGrading?: ClipColorGrading;
   audioEffects?: ClipAudioEffects;
 
+  // Phase 7 AI-Assisted Editing
+  aiMetadata?: import('./ai').ClipAIMetadata;
+
   // Phase 3 convenience aliases
   start?: number;
   sourceStart?: number;
@@ -571,7 +583,13 @@ export interface TimelineMarker {
   id: string;
   time: number; // in seconds
   name: string;
+  label?: string;
   color?: string;
+  description?: string;
+  type?: import('./workflow').MarkerType;
+  duration?: number;
+  timelineId?: string;
+  trackId?: string;
 }
 
 export interface TimelineData {
@@ -588,7 +606,7 @@ export interface TimelineData {
 }
 
 export interface Project {
-  projectVersion: 1 | 2 | 3 | 4;
+  projectVersion: 1 | 2 | 3 | 4 | 5 | 6;
   id: string;
   name: string;
   createdAt: string;
@@ -604,12 +622,25 @@ export interface Project {
     safeArea?: SafeAreaSettings;
     masterBus?: MasterAudioBus;
   };
+  aiMetadata?: import('./ai').ProjectAIMetadata;
+
+  // Phase 8 Professional Editing Workflow
+  bins?: import('./workflow').ProjectBin[];
+  multicamGroups?: import('./workflow').MulticamGroup[];
+  proxySettings?: import('./workflow').ProxySettings;
+  projectMetadata?: import('./workflow').ProjectMetadata;
+  isReadOnly?: boolean;
+
   metadata: {
     appVersion: string;
     appName: string;
     lastSavedBy?: string;
   };
 }
+
+export * from './ai';
+export * from './workflow';
+export * from './render';
 
 export interface Transition {
   id: string;

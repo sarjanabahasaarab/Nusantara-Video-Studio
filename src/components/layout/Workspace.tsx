@@ -12,6 +12,8 @@ import { ColorWorkspace } from '../color/ColorWorkspace';
 import { AudioWorkspace } from '../audio/AudioWorkspace';
 import { useUIStore } from '../../stores/uiStore';
 
+import { AIWorkspace } from '../ai/AIWorkspace';
+
 export const Workspace: React.FC = () => {
   const activeWorkspace = useUIStore((s) => s.activeWorkspace);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
@@ -26,6 +28,10 @@ export const Workspace: React.FC = () => {
 
   if (activeWorkspace === 'audio') {
     return <AudioWorkspace />;
+  }
+
+  if (activeWorkspace === 'ai') {
+    return <AIWorkspace />;
   }
 
   // Left sidebar horizontal resize drag

@@ -1,11 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import {defineConfig} from 'vite';
+import { defineConfig, Plugin } from 'vite';
+import { handleRenderApi } from './src/render/server/renderServerHandler';
+
+function renderApiPlugin(): Plugin {
+  return {
+    name: 'nusantara-render-api',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (!handleRenderApi(req, res)) {
+          next();
+        }
+      });
+    },
+  };
+}
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), renderApiPlugin()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
