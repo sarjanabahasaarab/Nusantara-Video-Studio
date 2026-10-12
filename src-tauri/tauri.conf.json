@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/tooling/cli/schema.json",
   "productName": "Nusantara Video Studio",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "identifier": "com.nusantara.videostudio",
   "build": {
     "beforeDevCommand": "npm run build",
@@ -31,6 +31,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "Nusantara Video Studio Team",
+    "copyright": "© 2026 Nusantara Video Studio Team. All rights reserved.",
+    "shortDescription": "Professional Desktop Video Editor",
+    "longDescription": "Professional non-linear video editing workstation built with React, TypeScript, Vite, Tauri, and native FFmpeg engine.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -41,7 +45,13 @@
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
-      "timestampUrl": ""
+      "timestampUrl": "",
+      "nsis": {
+        "installMode": "currentUser"
+      },
+      "wix": {
+        "language": "en-US"
+      }
     }
   }
 }

@@ -606,7 +606,7 @@ export interface TimelineData {
 }
 
 export interface Project {
-  projectVersion: 1 | 2 | 3 | 4 | 5 | 6;
+  projectVersion: 1 | 2 | 3 | 4 | 5 | 6 | 7;
   id: string;
   name: string;
   createdAt: string;
@@ -630,6 +630,11 @@ export interface Project {
   proxySettings?: import('./workflow').ProxySettings;
   projectMetadata?: import('./workflow').ProjectMetadata;
   isReadOnly?: boolean;
+
+  // Phase 9 & 10 Render & Production Release
+  renderSettings?: import('./render').RenderSettings;
+  exportHistory?: import('./render').ExportHistoryItem[];
+  migrationHistory?: { fromVersion: number; toVersion: number; date: string }[];
 
   metadata: {
     appVersion: string;
@@ -675,6 +680,9 @@ export interface AppSettings {
     theme: 'dark-studio' | 'dark-slate' | 'oled';
     autoSaveEnabled: boolean;
     autoSaveIntervalMinutes: number;
+    projectsDirectory?: string;
+    firstRunCompleted?: boolean;
+    releaseChannel?: 'stable' | 'beta';
   };
   project: {
     defaultResolution: ResolutionPreset;
@@ -685,6 +693,10 @@ export interface AppSettings {
     previewQuality: 'full' | 'half' | 'quarter';
     cacheLocation: string;
     gpuAcceleration: boolean;
+    ffmpegExecutablePath?: string;
+    ffprobeExecutablePath?: string;
+    hardwareEncoderPreference?: 'auto' | 'gpu' | 'cpu';
+    maxBackgroundThreads?: number;
   };
 }
 

@@ -42,6 +42,11 @@ export type ActiveDialog =
   | 'exportDetails'
   | 'renderLogs'
   | 'phase9Test'
+  | 'phase10Test'
+  | 'firstRunWizard'
+  | 'diagnostics'
+  | 'documentation'
+  | 'updateChecker'
   | null;
 
 interface UIState {

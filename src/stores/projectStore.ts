@@ -32,7 +32,7 @@ export const migrateProject = (raw: any): Project => {
   if (!raw) return createDefaultProject();
 
   const project: Project = {
-    projectVersion: 4,
+    projectVersion: 7,
     id: raw.id || `nvs-proj-${Date.now()}`,
     name: raw.name || 'Migrated Project',
     createdAt: raw.createdAt || new Date().toISOString(),
@@ -213,7 +213,7 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
   const now = new Date().toISOString();
 
   return {
-    projectVersion: 3,
+    projectVersion: 7,
     id,
     name: settings.name,
     createdAt: now,
@@ -255,7 +255,7 @@ export const createDefaultProject = (customSettings?: Partial<ProjectSettings>):
       },
     },
     metadata: {
-      appVersion: '0.5.0',
+      appVersion: '1.0.0',
       appName: 'Nusantara Video Studio',
     },
   };

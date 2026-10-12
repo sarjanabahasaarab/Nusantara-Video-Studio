@@ -53,6 +53,11 @@ import { ExportDetailsModal } from './components/render/ExportDetailsModal';
 import { RenderLogModal } from './components/render/RenderLogModal';
 import { ExportHistoryModal } from './components/render/ExportHistoryModal';
 import { Phase9TestModal } from './components/dialogs/Phase9TestModal';
+import { Phase10TestModal } from './components/dialogs/Phase10TestModal';
+import { FirstRunWizardModal } from './components/setup/FirstRunWizardModal';
+import { DiagnosticsModal } from './components/dialogs/DiagnosticsModal';
+import { DocumentationModal } from './components/dialogs/DocumentationModal';
+import { UpdateCheckerModal } from './components/dialogs/UpdateCheckerModal';
 import { RenderJob } from './types/render';
 
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
@@ -76,17 +81,22 @@ export default function App() {
   const [inspectedJob, setInspectedJob] = React.useState<RenderJob | null>(null);
   const [inspectedLogJobId, setInspectedLogJobId] = React.useState<string | null>(null);
 
-  // Initialize Database Service
+  // Initialize Database Service and check First-Run Experience
   useEffect(() => {
     databaseService.initialize().then(() => {
-      notify(
-        'Nusantara Video Studio v0.8.0',
-        'Phase 8: Professional Editing Workflow aktif. Proxy Media, Relink Heuristik, Project Archive, Bins, Markers, Multicam, Autosave & Health Check siap digunakan.',
-        'info',
-        4000
-      );
+      const isFirstRun = typeof localStorage !== 'undefined' && localStorage.getItem('nvs_first_run_completed') !== 'true';
+      if (isFirstRun) {
+        openDialog('firstRunWizard');
+      } else {
+        notify(
+          'Nusantara Video Studio v1.0.0',
+          'Official Production Release v1.0.0 siap digunakan. Seluruh 10 Phase rekayasa selesai dan terverifikasi.',
+          'info',
+          4000
+        );
+      }
     });
-  }, [notify]);
+  }, [notify, openDialog]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[#0d0e12] text-slate-200 overflow-hidden select-none font-sans">
@@ -229,6 +239,16 @@ export default function App() {
         isOpen={activeDialog === 'phase9Test'}
         onClose={closeDialog}
       />
+      <Phase10TestModal
+        isOpen={activeDialog === 'phase10Test'}
+        onClose={closeDialog}
+      />
+
+      {/* Phase 10 Production & Diagnostics Modals */}
+      <FirstRunWizardModal />
+      <DiagnosticsModal />
+      <DocumentationModal />
+      <UpdateCheckerModal />
 
       {/* Toast Notifications System */}
       <ToastContainer />

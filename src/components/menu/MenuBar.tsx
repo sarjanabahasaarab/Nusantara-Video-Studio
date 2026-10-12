@@ -709,12 +709,29 @@ export const MenuBar: React.FC = () => {
       title: 'Help',
       items: [
         {
-          label: 'Documentation',
-          action: () => comingSoon('Dokumentasi Nusantara Video Studio', 'Phase 3'),
+          label: 'Panduan Pengguna (User Documentation)...',
+          action: () => openDialog('documentation'),
         },
         {
           label: 'Keyboard Shortcuts',
           action: () => openDialog('keyboardCustomization'),
+        },
+        {
+          label: 'Diagnostik Sistem & Log Studio...',
+          action: () => openDialog('diagnostics'),
+        },
+        {
+          label: 'Wizard Pengaturan Awal (First-Run Setup)...',
+          action: () => openDialog('firstRunWizard'),
+        },
+        {
+          label: 'Periksa Pembaruan (Check for Updates)...',
+          action: () => openDialog('updateChecker'),
+          divider: true,
+        },
+        {
+          label: 'Phase 10 Test Suite (Production Readiness & Installer)...',
+          action: () => openDialog('phase10Test'),
         },
         {
           label: 'Phase 9 Automated Test Suite (Rendering & Export Engine)...',

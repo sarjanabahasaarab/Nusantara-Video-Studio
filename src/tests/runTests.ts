@@ -29,6 +29,8 @@ import { RenderEngine } from '../render/RenderEngine';
 import { ExportManager } from '../render/ExportManager';
 import { RenderQueueManager } from '../render/RenderQueue';
 import { RenderJobInstance } from '../render/RenderJob';
+import { diagnosticsService } from '../services/diagnosticsService';
+import { useSettingsStore } from '../stores/settingsStore';
 
 let totalTests = 0;
 let passedTests = 0;
@@ -682,6 +684,96 @@ if (duplicated) {
 }
 queueMgr.removeJob(renderTestJob.id);
 queueMgr.clearCompleted();
+
+// ------------------------------------------------------------------
+// 8. PRODUCTION READINESS & OFFICIAL RELEASE (PHASE 10)
+// ------------------------------------------------------------------
+console.log('\n[SECTION 8: PRODUCTION READINESS & OFFICIAL RELEASE (PHASE 10)]');
+
+// 1. Schema Version 7 & Legacy Migrations (v1-v6 to v7)
+const legacyV3 = {
+  projectVersion: 3,
+  id: 'legacy-p3',
+  name: 'Jakarta Montage 2024',
+  settings: { width: 1920, height: 1080, fps: 30, aspectRatio: '16:9', duration: 120, sampleRate: 48000 },
+  timeline: { tracks: [], duration: 120 },
+};
+const v3Parse = fileService.parseProject(JSON.stringify(legacyV3), true);
+assert(
+  Boolean(
+    v3Parse.valid &&
+      v3Parse.migrated &&
+      v3Parse.project?.projectVersion === 7 &&
+      v3Parse.project?.migrationHistory?.some((m) => m.fromVersion === 3 && m.toVersion === 7)
+  ),
+  'Schema Version 7 Automatic Legacy Migration (v3 -> v7)'
+);
+
+// 2. Reject Incompatible Newer Project Version
+const futureVersion = {
+  projectVersion: 42,
+  id: 'future-p42',
+  name: 'Future Project 2035',
+  settings: { width: 3840, height: 2160, fps: 60, aspectRatio: '16:9', duration: 300, sampleRate: 48000 },
+  timeline: { tracks: [], duration: 300 },
+};
+const futureParse = fileService.parseProject(JSON.stringify(futureVersion));
+assert(
+  Boolean(futureParse.valid === false && futureParse.error?.includes('lebih baru')),
+  'Forward Schema Protection (Reject Version > 7)'
+);
+
+// 3. Project Serialization v7 & Metadata Tags
+const v7Sample = { ...sampleProject, projectVersion: 7 as const };
+const serializedV7 = fileService.serializeProject(v7Sample);
+const parsedV7 = JSON.parse(serializedV7);
+assert(
+  parsedV7.projectVersion === 7 &&
+    parsedV7.metadata.appVersion === '1.0.0' &&
+    parsedV7.metadata.appName === 'Nusantara Video Studio',
+  'Project Serialization Schema v7 & Release Tags'
+);
+
+// 4. Privacy Redaction Guard
+const secretLog = 'Authorization: Bearer sk-secretKey999 with user C:\\Users\\DevUser\\Videos and password=superSecret';
+const redactedLog = diagnosticsService.redactSensitiveData(secretLog);
+assert(
+  !redactedLog.includes('sk-secretKey999') &&
+    !redactedLog.includes('DevUser') &&
+    !redactedLog.includes('superSecret') &&
+    redactedLog.includes('[REDACTED_TOKEN]') &&
+    redactedLog.includes('[USERNAME]') &&
+    redactedLog.includes('[REDACTED_PASSWORD]'),
+  'Privacy Redaction Guard (Tokens, Usernames, Passwords Sanitized)'
+);
+
+// 5. Diagnostics Report Synthesis
+const diag = await diagnosticsService.getComprehensiveReport();
+assert(
+  diag.application.name === 'Nusantara Video Studio' &&
+    diag.application.version === '1.0.0' &&
+    diag.application.schemaVersion === 7 &&
+    typeof diag.system.cpuCores === 'number' &&
+    diag.storage.databaseStatus === 'connected',
+  'Comprehensive Diagnostics Report Synthesis'
+);
+
+// 6. Alpha Channel Container Constraints
+const alphaMp4 = { ...validSettings, format: 'mp4' as const, exportAlpha: true };
+const alphaMp4Res = RenderValidator.validateSettings(alphaMp4, capabilities, sampleProject);
+assert(
+  alphaMp4Res.isValid === false && alphaMp4Res.errors.some((e) => e.includes('alpha channel')),
+  'Alpha Channel Container Enforcement (MP4 Disallows Alpha)'
+);
+
+// 7. Application Settings Store & Channels
+const appSettings = useSettingsStore.getState().settings;
+assert(
+  appSettings.general.releaseChannel === 'stable' &&
+    appSettings.general.theme === 'dark-studio' &&
+    appSettings.general.language === 'id',
+  'Settings Store & Default Release Channel Initialization'
+);
 
 console.log('\n======================================================');
 console.log(` RESULTS: ${passedTests}/${totalTests} PASSED, ${failedTests} FAILED`);
